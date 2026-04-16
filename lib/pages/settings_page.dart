@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
+import '../models/source.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -6,216 +9,173 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF1A1A1A),
       appBar: AppBar(
-        title: const Text('设置'),
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: const Color(0xFF1A1A1A),
+        elevation: 0,
+        title: const Text('设置', style: TextStyle(color: Colors.white)),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            // 接口配置
-            SettingSection(
-              title: '接口配置',
-              items: [
-                SettingItem(
-                  icon: Icons.link,
-                  title: '影视接口',
-                  subtitle: '管理影视接口链接和线路名称',
-                  onTap: () {},
-                ),
-                SettingItem(
-                  icon: Icons.music_note,
-                  title: '音乐音源',
-                  subtitle: '管理音乐音源文件和在线音源',
-                  onTap: () {},
-                ),
-                SettingItem(
-                  icon: Icons.book,
-                  title: '小说书源',
-                  subtitle: '管理小说阅读书源',
-                  onTap: () {},
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            // 播放设置
-            SettingSection(
-              title: '播放设置',
-              items: [
-                SettingItem(
-                  icon: Icons.play_arrow,
-                  title: '默认播放器',
-                  subtitle: '选择默认播放器',
-                  onTap: () {},
-                ),
-                SettingItem(
-                  icon: Icons.speed,
-                  title: '播放速度',
-                  subtitle: '设置默认播放速度',
-                  onTap: () {},
-                ),
-                SettingItem(
-                  icon: Icons.refresh,
-                  title: '自动换源',
-                  subtitle: '播放失败时自动切换数据源',
-                  onTap: () {},
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            // 备份设置
-            SettingSection(
-              title: '备份设置',
-              items: [
-                SettingItem(
-                  icon: Icons.cloud_upload,
-                  title: 'WebDAV备份',
-                  subtitle: '备份影视接口、音乐音源、小说书源和个人设置',
-                  onTap: () {},
-                ),
-                SettingItem(
-                  icon: Icons.download,
-                  title: '恢复备份',
-                  subtitle: '从WebDAV恢复备份',
-                  onTap: () {},
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            // 关于
-            SettingSection(
-              title: '关于',
-              items: [
-                SettingItem(
-                  icon: Icons.info,
-                  title: '版本信息',
-                  subtitle: 'v1.0.0',
-                  onTap: () {},
-                ),
-                SettingItem(
-                  icon: Icons.help,
-                  title: '帮助与反馈',
-                  subtitle: '查看帮助文档和提交反馈',
-                  onTap: () {},
-                ),
-                SettingItem(
-                  icon: Icons.share,
-                  title: '分享应用',
-                  subtitle: '分享应用给好友',
-                  onTap: () {},
-                ),
-              ],
-            ),
-          ],
-        ),
+      body: ListView(
+        children: [
+          _buildSectionTitle('影视源管理'),
+          _buildSourceList(context, 'vod'),
+          _buildAddSourceButton(context, 'vod'),
+          const Divider(color: Colors.grey),
+          _buildSectionTitle('直播源管理'),
+          _buildSourceList(context, 'live'),
+          _buildAddSourceButton(context, 'live'),
+          const Divider(color: Colors.grey),
+          _buildSectionTitle('关于'),
+          _buildAboutItem(context),
+        ],
       ),
     );
   }
-}
 
-class SettingSection extends StatelessWidget {
-  final String title;
-  final List<SettingItem> items;
-
-  const SettingSection({
-    super.key,
-    required this.title,
-    required this.items,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1E),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            children: items,
-          ),
-        ),
-      ],
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Text(
+        title,
+        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+      ),
     );
   }
-}
 
-class SettingItem extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
+  Widget _buildSourceList(BuildContext context, String type) {
+    final provider = Provider.of<AppProvider>(context);
+    List<Source> sources = type == 'vod' ? provider.vodSources : provider.liveSources;
 
-  const SettingItem({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
+    if (sources.isEmpty) {
+      return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Color(0xFF333333)),
+        child: Text('暂无${type == "vod" ? "影视" : "直播"}源', style: const TextStyle(color: Colors.white54)),
+      );
+    }
+
+    return Column(
+      children: sources.map((source) => _buildSourceItem(context, source, type)).toList(),
+    );
+  }
+
+  Widget _buildSourceItem(BuildContext context, Source source, String type) {
+    return ListTile(
+      leading: const Icon(Icons.source, color: Colors.blue),
+      title: Text(source.name, style: const TextStyle(color: Colors.white)),
+      subtitle: Text(source.url, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+      trailing: IconButton(
+        icon: const Icon(Icons.delete, color: Colors.red),
+        onPressed: () {
+          Provider.of<AppProvider>(context, listen: false).removeSource(source.id, type);
+        },
+      ),
+    );
+  }
+
+  Widget _buildAddSourceButton(BuildContext context, String type) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () => _showAddSourceDialog(context, type),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: Colors.green,
-              size: 24,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right,
-              color: Colors.grey,
-            ),
-          ],
+          child: Text('添加${type == "vod" ? "影视" : "直播"}源'),
         ),
       ),
+    );
+  }
+
+  void _showAddSourceDialog(BuildContext context, String type) {
+    TextEditingController nameController = TextEditingController();
+    TextEditingController urlController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF2D2D2D),
+          title: Text('添加${type == "vod" ? "影视" : "直播"}源', style: const TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: '源名称',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                ),
+                style: const TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: urlController,
+                decoration: const InputDecoration(
+                  labelText: '源地址',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                ),
+                style: const TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消', style: TextStyle(color: Colors.white70)),
+            ),
+            TextButton(
+              onPressed: () {
+                if (nameController.text.isNotEmpty && urlController.text.isNotEmpty) {
+                  Source source = Source(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    name: nameController.text,
+                    url: urlController.text,
+                    type: type,
+                  );
+                  Provider.of<AppProvider>(context, listen: false).addSource(source);
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('确认', style: TextStyle(color: Colors.blue)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildAboutItem(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.info, color: Colors.blue),
+      title: const Text('关于蜂蜜', style: TextStyle(color: Colors.white)),
+      subtitle: const Text('版本 1.0.0', style: TextStyle(color: Colors.white54)),
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF2D2D2D),
+              title: const Text('蜂蜜', style: TextStyle(color: Colors.white)),
+              content: const Text(
+                '一款基于Flutter开发的全平台影音软件，支持影视、直播、小说、漫画、音乐等多种内容。',
+                style: TextStyle(color: Colors.white70),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('确定', style: TextStyle(color: Colors.blue)),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

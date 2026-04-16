@@ -3,37 +3,129 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v*'
 
 jobs:
-  build:
+  build-android:
+    name: Build Android APK
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Flutter
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          
+      - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.9'
-
-      - name: Install dependencies
+          flutter-version: '3.19.0'
+          channel: 'stable'
+          
+      - name: Get dependencies
         run: flutter pub get
+        
+      - name: Build APK
+        run: flutter build apk --release
+        
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: fmbox-android
+          path: build/app/outputs/apk/release/app-release.apk
 
-      - name: Build web
-        run: flutter build web --release
+  build-windows:
+    name: Build Windows EXE
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+          
+      - name: Enable desktop support
+        run: flutter config --enable-windows-desktop
+        
+      - name: Get dependencies
+        run: flutter pub get
+        
+      - name: Build Windows
+        run: flutter build windows --release
+        
+      - name: Upload Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: fmbox-windows
+          path: build/windows/runner/Release/
 
-      - name: Build Linux
+  build-linux:
+    name: Build Linux AppImage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+          
+      - name: Enable desktop support
+        run: flutter config --enable-linux-desktop
+        
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gtk+-3.0 libgtk-3-dev
-          flutter build linux --release
-
-      - name: Create release
-        uses: softprops/action-gh-release@v1
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+          
+      - name: Get dependencies
+        run: flutter pub get
+        
+      - name: Build Linux
+        run: flutter build linux --release
+        
+      - name: Upload Linux
+        uses: actions/upload-artifact@v4
         with:
-          files:
-            - build/web/**
-            - build/linux/x64/release/bundle/**
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: fmbox-linux
+          path: build/linux/x64/release/bundle/
+
+  release:
+    name: Create Release
+    needs: [build-android, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: fmbox-android
+          path: ./artifacts/android
+          
+      - name: Download Windows
+        uses: actions/download-artifact@v4
+        with:
+          name: fmbox-windows
+          path: ./artifacts/windows
+          
+      - name: Download Linux
+        uses: actions/download-artifact@v4
+        with:
+          name: fmbox-linux
+          path: ./artifacts/linux
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: fmbox ${{ github.ref_name }}
+          files: |
+            ./artifacts/android/app-release.apk
+            ./artifacts/windows/fmbox.exe
+            ./artifacts/linux/fmbox
+          token: ${{ secrets.GITHUB_TOKEN }}

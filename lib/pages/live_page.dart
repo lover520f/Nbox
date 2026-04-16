@@ -1,180 +1,178 @@
 import 'package:flutter/material.dart';
-import 'package:nbox/components/category_tab.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
+import '../models/live_channel.dart';
+import '../utils/spider_engine.dart';
 
-class LivePage extends StatelessWidget {
+class LivePage extends StatefulWidget {
   const LivePage({super.key});
+
+  @override
+  State<LivePage> createState() => _LivePageState();
+}
+
+class _LivePageState extends State<LivePage> {
+  List<LiveChannel> _channels = [];
+  List<String> _groups = [];
+  String _selectedGroup = '';
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadChannels();
+  }
+
+  Future<void> _loadChannels() async {
+    setState(() => _isLoading = true);
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    
+    if (provider.liveSources.isNotEmpty) {
+      _channels = await SpiderEngine.getLiveChannels(provider.liveSources.first.url);
+    } else {
+      _channels = await SpiderEngine.getLiveChannels('http://ok213.top/ok');
+    }
+
+    _groups = _channels
+        .map((c) => c.group ?? '其他')
+        .toSet()
+        .toList();
+    
+    if (_groups.isNotEmpty) {
+      _selectedGroup = _groups.first;
+    }
+
+    setState(() => _isLoading = false);
+  }
+
+  List<LiveChannel> _getChannelsByGroup(String group) {
+    return _channels.where((c) => c.group == group || (group == '其他' && c.group == null)).toList();
+  }
+
+  void _playChannel(LiveChannel channel) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LivePlayerPage(channel: channel),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF1A1A1A),
       appBar: AppBar(
-        title: const Text('直播'),
-        backgroundColor: const Color(0xFF1E1E1E),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.tv),
-            onPressed: () {},
-          ),
-        ],
+        backgroundColor: const Color(0xFF1A1A1A),
+        elevation: 0,
+        title: const Text('直播', style: TextStyle(color: Colors.white)),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            // 分类标签
-            SizedBox(
-              height: 40,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  CategoryTab(label: '推荐', isActive: true),
-                  CategoryTab(label: '游戏'),
-                  CategoryTab(label: '娱乐'),
-                  CategoryTab(label: '更多', showArrow: true),
-                ],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.blue))
+          : Row(
+              children: [
+                _buildGroupList(),
+                Expanded(child: _buildChannelList()),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildGroupList() {
+    return Container(
+      width: 120,
+      color: const Color(0xFF2D2D2D),
+      child: ListView.builder(
+        itemCount: _groups.length,
+        itemBuilder: (context, index) {
+          return GestureDetector(
+            onTap: () => setState(() => _selectedGroup = _groups[index]),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+              color: _selectedGroup == _groups[index] ? Colors.blue : Colors.transparent,
+              child: Text(
+                _groups[index],
+                style: TextStyle(
+                  color: _selectedGroup == _groups[index] ? Colors.white : Colors.white70,
+                  fontSize: 14,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(height: 20),
-            // 直播网格
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 16,
-                childAspectRatio: 16/9,
-              ),
-              itemCount: 4,
-              itemBuilder: (context, index) {
-                return LiveItem(
-                  title: [
-                    '王者荣耀：巅峰赛冲分',
-                    '英雄联盟：排位赛',
-                    '音乐演唱会',
-                    '美食制作',
-                  ][index],
-                  streamer: [
-                    '张三',
-                    '李四',
-                    '王五',
-                    '赵六',
-                  ][index],
-                  imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=live%20streaming%20scene&image_size=landscape_16_9',
-                  viewers: [
-                    '12.3万',
-                    '8.7万',
-                    '5.2万',
-                    '3.8万',
-                  ][index],
-                );
-              },
-            ),
-          ],
-        ),
+          );
+        },
       ),
+    );
+  }
+
+  Widget _buildChannelList() {
+    var channels = _getChannelsByGroup(_selectedGroup);
+    return GridView.builder(
+      padding: const EdgeInsets.all(12),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        childAspectRatio: 1.5,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: channels.length,
+      itemBuilder: (context, index) {
+        var channel = channels[index];
+        return GestureDetector(
+          onTap: () => _playChannel(channel),
+          child: Card(
+            color: const Color(0xFF2D2D2D),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.play_circle, color: Colors.blue, size: 40),
+                const SizedBox(height: 8),
+                Text(
+                  channel.name,
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
-class LiveItem extends StatelessWidget {
-  final String title;
-  final String streamer;
-  final String imageUrl;
-  final String viewers;
+class LivePlayerPage extends StatefulWidget {
+  final LiveChannel channel;
 
-  const LiveItem({
-    super.key,
-    required this.title,
-    required this.streamer,
-    required this.imageUrl,
-    required this.viewers,
-  });
+  const LivePlayerPage({super.key, required this.channel});
 
   @override
+  State<LivePlayerPage> createState() => _LivePlayerPageState();
+}
+
+class _LivePlayerPageState extends State<LivePlayerPage> {
+  @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AspectRatio(
-          aspectRatio: 16/9,
-          child: Stack(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.all(Radius.circular(8)),
-                  image: DecorationImage(
-                    image: NetworkImage(imageUrl),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    '直播中',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    viewers,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black.withOpacity(0.8),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+        title: Text(
+          widget.channel.name,
+          style: const TextStyle(color: Colors.white),
         ),
-        const SizedBox(height: 4),
-        Text(
-          streamer,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 12,
-          ),
-        ),
-      ],
+      ),
+      body: const Center(
+        child: Icon(Icons.play_circle, color: Colors.blue, size: 100),
+      ),
     );
   }
 }

@@ -1,98 +1,47 @@
 import 'package:flutter/material.dart';
-import 'package:nbox/pages/home_page.dart';
-import 'package:nbox/pages/novel_page.dart';
-import 'package:nbox/pages/comic_page.dart';
-import 'package:nbox/pages/music_page.dart';
-import 'package:nbox/pages/live_page.dart';
-import 'package:nbox/pages/settings_page.dart';
-import 'package:nbox/components/category_tab.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
+import 'pages/home_page.dart';
+import 'providers/app_provider.dart';
+import 'utils/spider_engine.dart';
 
-void main() {
-  runApp(const NboxApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  await Hive.initFlutter();
+  await Hive.openBox('settings');
+  await Hive.openBox('sources');
+  await Hive.openBox('favorites');
+  await Hive.openBox('history');
+  
+  await SpiderEngine.init();
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => AppProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
-class NboxApp extends StatelessWidget {
-  const NboxApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Nbox',
+      title: '蜂蜜',
       theme: ThemeData(
-        primarySwatch: Colors.green,
-        scaffoldBackgroundColor: const Color(0xFF121212),
+        primarySwatch: Colors.blue,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF1A1A1A),
         textTheme: const TextTheme(
           bodyLarge: TextStyle(color: Colors.white),
-          bodyMedium: TextStyle(color: Colors.white),
-          bodySmall: TextStyle(color: Colors.grey),
+          bodyMedium: TextStyle(color: Colors.white70),
         ),
       ),
-      home: const MainScreen(),
-    );
-  }
-}
-
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
-
-  @override
-  State<MainScreen> createState() => _MainScreenState();
-}
-
-class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
-
-  final List<Widget> _pages = [
-    const HomePage(),
-    const NovelPage(),
-    const ComicPage(),
-    const MusicPage(),
-    const LivePage(),
-    const SettingsPage(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        backgroundColor: const Color(0xFF1E1E1E),
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: '首页',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.book),
-            label: '小说',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book),
-            label: '漫画',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.music_note),
-            label: '音乐',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.live_tv),
-            label: '直播',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: '设置',
-          ),
-        ],
-      ),
+      home: const HomePage(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }

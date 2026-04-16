@@ -1,217 +1,372 @@
 import 'package:flutter/material.dart';
-import 'package:nbox/components/category_tab.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
+import '../models/video.dart';
+import '../models/category.dart';
+import '../utils/spider_engine.dart';
+import 'detail_page.dart';
+import 'live_page.dart';
+import 'novel_page.dart';
+import 'comic_page.dart';
+import 'music_page.dart';
+import 'settings_page.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nbox'),
-        backgroundColor: const Color(0xFF1E1E1E),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.history),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.favorite),
-            onPressed: () {},
-          ),
-        ],
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  List<Category> _categories = [];
+  List<Video> _videos = [];
+  int _currentCategoryIndex = 0;
+  int _currentPage = 1;
+  bool _isLoading = false;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+        _loadMore();
+      }
+    });
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() => _isLoading = true);
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    await provider.loadSources();
+
+    if (provider.vodSources.isNotEmpty) {
+      _categories = await SpiderEngine.getCategories(provider.vodSources.first.url);
+      if (_categories.isNotEmpty) {
+        await _loadVideos();
+      }
+    }
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _loadVideos({bool refresh = false}) async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    if (provider.vodSources.isEmpty) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    int page = refresh ? 1 : _currentPage;
+    String categoryId = _categories.isNotEmpty ? _categories[_currentCategoryIndex].id : '';
+
+    List<Video> videos = await SpiderEngine.getVideos(
+      provider.vodSources.first.url,
+      page: page,
+      categoryId: categoryId,
+    );
+
+    setState(() {
+      if (refresh) {
+        _videos = videos;
+        _currentPage = 1;
+      } else {
+        _videos.addAll(videos);
+        _currentPage++;
+      }
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _loadMore() async {
+    await _loadVideos();
+  }
+
+  void _onCategoryTap(int index) {
+    setState(() {
+      _currentCategoryIndex = index;
+      _currentPage = 1;
+    });
+    _loadVideos(refresh: true);
+  }
+
+  void _onVideoTap(Video video) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DetailPage(video: video),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            // 分类标签
-            SizedBox(
-              height: 40,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  CategoryTab(label: '推荐', isActive: true),
-                  CategoryTab(label: '新剧'),
-                  CategoryTab(label: '都市情感'),
-                  CategoryTab(label: '更多', showArrow: true),
-                ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = Provider.of<AppProvider>(context);
+    bool isDesktop = MediaQuery.of(context).size.width > 600;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF1A1A1A),
+      appBar: _buildAppBar(),
+      body: _buildBody(),
+      drawer: isDesktop ? _buildDesktopDrawer(provider) : null,
+      bottomNavigationBar: isDesktop ? null : _buildBottomNavigationBar(provider),
+    );
+  }
+
+  AppBar _buildAppBar() {
+    return AppBar(
+      backgroundColor: const Color(0xFF1A1A1A),
+      elevation: 0,
+      title: const Text(
+        '影视',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.search, color: Colors.white),
+          onPressed: () {},
+        ),
+        IconButton(
+          icon: const Icon(Icons.cast, color: Colors.white),
+          onPressed: () {},
+        ),
+        IconButton(
+          icon: const Icon(Icons.refresh, color: Colors.white),
+          onPressed: () => _loadVideos(refresh: true),
+        ),
+        IconButton(
+          icon: const Icon(Icons.favorite, color: Colors.white),
+          onPressed: () {},
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading && _videos.isEmpty) {
+      return const Center(child: CircularProgressIndicator(color: Colors.blue));
+    }
+
+    return Column(
+      children: [
+        _buildCategoryTabs(),
+        Expanded(
+          child: GridView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.all(12),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              childAspectRatio: 0.65,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: _videos.length + (_isLoading ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == _videos.length) {
+                return const Center(child: CircularProgressIndicator(color: Colors.blue));
+              }
+              return _buildVideoCard(_videos[index]);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryTabs() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          for (int i = 0; i < _categories.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ElevatedButton(
+                onPressed: () => _onCategoryTap(i),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _currentCategoryIndex == i 
+                    ? Colors.blue 
+                    : const Color(0xFF2D2D2D),
+                  foregroundColor: _currentCategoryIndex == i 
+                    ? Colors.white 
+                    : Colors.white70,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                child: Text(_categories[i].name),
               ),
             ),
-            const SizedBox(height: 20),
-            // 内容网格
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 16,
-                childAspectRatio: 2/3,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVideoCard(Video video) {
+    return GestureDetector(
+      onTap: () => _onVideoTap(video),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: video.cover.isNotEmpty
+                  ? Image.network(
+                      video.cover,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(child: CircularProgressIndicator(color: Colors.blue));
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(Icons.broken_image, color: Colors.grey);
+                      },
+                    )
+                  : const Icon(Icons.image, color: Colors.grey),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            video.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+            ),
+          ),
+          if (video.type != null || video.year != null)
+            Text(
+              '${video.type ?? ''} ${video.year ?? ''}'.trim(),
+              style: const TextStyle(
+                color: Colors.white54,
+                fontSize: 10,
               ),
-              itemCount: 6,
-              itemBuilder: (context, index) {
-                return ContentItem(
-                  title: [
-                    '义起风云枭雄路',
-                    '重回80：从小渔民到水产大王',
-                    '出狱后，我举世无双',
-                    '流年深深深几许',
-                    '女神老婆赖上我',
-                    '万里江山入我怀',
-                  ][index],
-                  imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Chinese%20drama%20poster&image_size=square',
-                  episode: [
-                    '逆袭 61集',
-                    '逆袭 61集',
-                    '逆袭 69集',
-                    '虐恋 70集',
-                    '马甲 60集',
-                    '穿越 74集',
-                  ][index],
-                  views: [
-                    '1085万',
-                    '1635万',
-                    '970万',
-                    '199万',
-                    '304万',
-                    '274万',
-                  ][index],
-                );
-              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomNavigationBar(AppProvider provider) {
+    return BottomNavigationBar(
+      backgroundColor: const Color(0xFF2D2D2D),
+      selectedItemColor: Colors.blue,
+      unselectedItemColor: Colors.white54,
+      currentIndex: provider.currentIndex,
+      onTap: (index) {
+        provider.setCurrentIndex(index);
+        _navigateToPage(index);
+      },
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home),
+          label: '影视',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.book),
+          label: '小说',
+        ),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.menu_book),
+            label: '漫画',
+          ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.music_note),
+          label: '音乐',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.play_circle),
+          label: '直播',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.settings),
+          label: '设置',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopDrawer(AppProvider provider) {
+    return Drawer(
+      width: 100,
+      backgroundColor: const Color(0xFF2D2D2D),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const SizedBox(height: 40),
+          _buildDrawerItem(Icons.home, '影视', 0, provider),
+          _buildDrawerItem(Icons.book, '小说', 1, provider),
+          _buildDrawerItem(Icons.menu_book, '漫画', 2, provider),
+          _buildDrawerItem(Icons.music_note, '音乐', 3, provider),
+          _buildDrawerItem(Icons.play_circle, '直播', 4, provider),
+          _buildDrawerItem(Icons.settings, '设置', 5, provider),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem(IconData icon, String label, int index, AppProvider provider) {
+    return GestureDetector(
+      onTap: () {
+        provider.setCurrentIndex(index);
+        _navigateToPage(index);
+        Navigator.pop(context);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        color: provider.currentIndex == index ? Colors.blue : Colors.transparent,
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: provider.currentIndex == index ? Colors.white : Colors.white54,
+              size: 28,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: provider.currentIndex == index ? Colors.white : Colors.white54,
+                fontSize: 12,
+              ),
             ),
           ],
         ),
       ),
     );
   }
-}
 
-class CategoryTab extends StatelessWidget {
-  final String label;
-  final bool isActive;
-  final bool showArrow;
-
-  const CategoryTab({
-    super.key,
-    required this.label,
-    this.isActive = false,
-    this.showArrow = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isActive ? Colors.green : const Color(0xFF333333),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? Colors.white : Colors.grey,
-              fontSize: 14,
-            ),
-          ),
-          if (showArrow) const Icon(Icons.arrow_drop_down, color: Colors.grey, size: 16),
-        ],
-      ),
-    );
-  }
-}
-
-class ContentItem extends StatelessWidget {
-  final String title;
-  final String imageUrl;
-  final String episode;
-  final String views;
-
-  const ContentItem({
-    super.key,
-    required this.title,
-    required this.imageUrl,
-    required this.episode,
-    required this.views,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AspectRatio(
-          aspectRatio: 2/3,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.all(Radius.circular(8)),
-              image: DecorationImage(
-                image: NetworkImage(imageUrl),
-                fit: BoxFit.cover,
-              ),
-            ),
-            child: Container(
-              decoration: const BoxDecoration(
-                borderRadius: BorderRadius.all(Radius.circular(8)),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black87,
-                  ],
-                ),
-              ),
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        episode,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
-                      ),
-                      Text(
-                        views,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
+  void _navigateToPage(int index) {
+    switch (index) {
+      case 0:
+        break;
+      case 1:
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const NovelPage()));
+        break;
+      case 2:
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const ComicPage()));
+        break;
+      case 3:
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const MusicPage()));
+        break;
+      case 4:
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const LivePage()));
+        break;
+      case 5:
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsPage()));
+        break;
+    }
   }
 }

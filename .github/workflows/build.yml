@@ -85,8 +85,30 @@ jobs:
           name: android-build
           path: build/app/outputs/flutter-apk
 
+  build_ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.9'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS
+        run: flutter build ios --release --no-codesign
+
+      - name: Upload ios build
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-build
+          path: build/ios/iphoneos
+
   release:
-    needs: [build_web_linux, build_windows, build_android]
+    needs: [build_web_linux, build_windows, build_android, build_ios]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -104,5 +126,6 @@ jobs:
             - artifacts/linux-build/**
             - artifacts/windows-build/**
             - artifacts/android-build/**
+            - artifacts/ios-build/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

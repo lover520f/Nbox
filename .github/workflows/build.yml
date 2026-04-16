@@ -8,43 +8,33 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Debug - Current directory
-        run: pwd
-
-      - name: Debug - List files
-        run: ls -la
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.16.9'
-
-      - name: Debug - Flutter version
-        run: flutter --version
-
-      - name: Debug - Flutter doctor
-        run: flutter doctor -v
+          cache: true
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Debug - After pub get
-        run: ls -la
-
       - name: Build web
         run: flutter build web --release
 
-      - name: Debug - After build
-        run: ls -la build/web
+      - name: Zip web build
+        run: |
+          cd build/web
+          zip -r ../../nbox-web.zip .
+          cd ../../
 
-      - name: Create release
-        uses: softprops/action-gh-release@v1
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          files: build/web/**
+          files: nbox-web.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

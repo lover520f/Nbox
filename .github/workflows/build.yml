@@ -6,10 +6,11 @@ on:
       - 'v*.*.*'
 
 jobs:
-  build_web_linux:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -22,110 +23,9 @@ jobs:
       - name: Build web
         run: flutter build web --release
 
-      - name: Build Linux
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gtk+-3.0 libgtk-3-dev
-          flutter build linux --release
-
-      - name: Upload web build
-        uses: actions/upload-artifact@v3
-        with:
-          name: web-build
-          path: build/web
-
-      - name: Upload linux build
-        uses: actions/upload-artifact@v3
-        with:
-          name: linux-build
-          path: build/linux/x64/release/bundle
-
-  build_windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.16.9'
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build Windows
-        run: flutter build windows --release
-
-      - name: Upload windows build
-        uses: actions/upload-artifact@v3
-        with:
-          name: windows-build
-          path: build/windows/runner/Release
-
-  build_android:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.16.9'
-          android-version: '33'
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build Android APK
-        run: flutter build apk --release
-
-      - name: Upload android build
-        uses: actions/upload-artifact@v3
-        with:
-          name: android-build
-          path: build/app/outputs/flutter-apk
-
-  build_ios:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.16.9'
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build iOS
-        run: flutter build ios --release --no-codesign
-
-      - name: Upload ios build
-        uses: actions/upload-artifact@v3
-        with:
-          name: ios-build
-          path: build/ios/iphoneos
-
-  release:
-    needs: [build_web_linux, build_windows, build_android, build_ios]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v3
-        with:
-          path: artifacts
-
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
-          files:
-            - artifacts/web-build/**
-            - artifacts/linux-build/**
-            - artifacts/windows-build/**
-            - artifacts/android-build/**
-            - artifacts/ios-build/**
+          files: build/web/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

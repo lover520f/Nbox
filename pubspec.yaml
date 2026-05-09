@@ -1,33 +1,33 @@
-{
-  "name": "nbox",
-  "version": "1.0.0",
-  "description": "Nbox - 牛盒 - 全平台影视播放器，基于 CatVod 架构",
-  "publish_to": "pub.dev",
-  "environment": {
-    "sdk": ">=3.0.0 <4.0.0"
-  },
-  "dependencies": {
-    "flutter": "^3.16.0",
-    "provider": "^6.1.1",
-    "dio": "^5.4.0",
-    "video_player": "^2.8.2",
-    "chewie": "^1.7.4",
-    "hive": "^2.2.3",
-    "hive_flutter": "^1.1.0",
-    "path_provider": "^2.1.2",
-    "cached_network_image": "^3.3.1",
-    "window_manager": "^0.3.8"
-  },
-  "dev_dependencies": {
-    "flutter_test": "^1.24.0",
-    "flutter_lints": "^3.0.1"
-  },
-  "flutter": {
-    "uses-material-design": true,
-    "assets": [
-      "assets/",
-      "assets/config/",
-      "assets/spider/"
-    ]
-  }
-}
+name: nbox
+version: 1.0.0
+description: Nbox - 牛盒 - 全平台影视播放器，基于 CatVod 架构
+
+publish_to: pub.dev
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.1
+  dio: ^5.4.0
+  video_player: ^2.8.2
+  chewie: ^1.7.4
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  path_provider: ^2.1.2
+  cached_network_image: ^3.3.1
+  window_manager: ^0.3.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
+    - assets/config/
+    - assets/spider/

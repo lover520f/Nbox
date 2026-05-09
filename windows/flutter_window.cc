@@ -11,16 +11,15 @@ bool FlutterWindow::OnCreate() {
   }
 
   RECT frame = GetFrame();
-  flutter_controller_ = std::make_unique<flutter::FlutterController>(
-      project_,
+  flutter_controller_ = std::make_unique<flutter::FlutterViewController>(
       frame.right - frame.left,
       frame.bottom - frame.top,
-      [this](const std::vector<std::string>& args) {
-        return RunEntrypoint(args);
-      });
+      project_);
+  
   if (!flutter_controller_->engine()) {
     return false;
   }
+  
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
   return true;
 }

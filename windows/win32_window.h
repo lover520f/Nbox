@@ -31,6 +31,7 @@ class Win32Window {
   virtual void Destroy();
 
   RECT GetFrame() const;
+  HWND GetHandle() const { return window_handle_; }
 
   void SetTitle(const std::wstring& title);
 
@@ -45,10 +46,6 @@ class Win32Window {
 
  private:
   bool RegisterWindowClass();
-
-  HWND GetHandle() const { return window_handle_; }
-  void HandleMessage(HWND hwnd, UINT const message, WPARAM const wparam,
-                     LPARAM const lparam);
 
   HWND window_handle_ = nullptr;
   bool is_child_content_visible_ = false;

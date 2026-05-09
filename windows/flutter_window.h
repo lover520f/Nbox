@@ -1,8 +1,8 @@
-#ifndef FLUTTER_MY_SHELL_PROJECT_WINDOWS_FLUTTER_WINDOW_H_
-#define FLUTTER_MY_SHELL_PROJECT_WINDOWS_FLUTTER_WINDOW_H_
+#ifndef FLUTTER_WINDOW_H_
+#define FLUTTER_WINDOW_H_
 
 #include <flutter/dart_project.h>
-#include <flutter/flutter_controller.h>
+#include <flutter/flutter_view_controller.h>
 
 #include <memory>
 
@@ -13,13 +13,12 @@ class FlutterWindow : public Win32Window {
   FlutterWindow(const flutter::DartProject& project);
   virtual ~FlutterWindow();
 
- protected:
-  bool OnCreate() override;
-  void OnDestroy() override;
+  bool OnCreate();
+  void OnDestroy();
 
  private:
   flutter::DartProject project_;
-  std::unique_ptr<flutter::FlutterController> flutter_controller_;
+  std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
 };
 
-#endif  // FLUTTER_MY_SHELL_PROJECT_WINDOWS_FLUTTER_WINDOW_H_
+#endif  // FLUTTER_WINDOW_H_

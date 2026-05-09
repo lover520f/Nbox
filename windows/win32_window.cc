@@ -21,7 +21,6 @@ bool Win32Window::CreateAndShow(const std::wstring& title, const Size& size) {
           reinterpret_cast<CREATESTRUCT*>(lparam)->lpCreateParams);
       SetWindowLongPtr(hwnd, GWLP_USERDATA,
                        reinterpret_cast<LONG_PTR>(window));
-      window->window_handle_ = hwnd;
     }
     return DefWindowProcW(hwnd, msg, wparam, lparam);
   };
@@ -102,3 +101,7 @@ void Win32Window::OnCreate() {}
 void Win32Window::OnDestroy() {}
 
 void Win32Window::Activate() { SetFocus(window_handle_); }
+
+bool Win32Window::RegisterWindowClass() {
+  return true;
+}

@@ -47,6 +47,38 @@ jobs:
           path: build/app/outputs/flutter-apk/app-x86_64-release.apk
           retention-days: 5
 
+  release-android:
+    needs: build-android
+    runs-on: ubuntu-latest
+    if: needs.build-android.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all APK artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare Release
+        run: |
+          mkdir -p artifacts
+          cd artifacts
+          mv app-*-v8a-release.apk nbox-1.0.0-arm64-v8a-release.apk 2>/dev/null || true
+          mv app-*-armeabi-v7a-release.apk nbox-1.0.0-armeabi-v7a-release.apk 2>/dev/null || true
+          mv app-*-x86_64-release.apk nbox-1.0.0-x86_64-release.apk 2>/dev/null || true
+          ls -la
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v1.0.0
+          name: Nbox v1.0.0 Release
+          draft: false
+          prerelease: false
+          files: artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-windows:
     runs-on: windows-latest
     steps:
@@ -71,57 +103,3 @@ jobs:
           name: nbox-windows
           path: build/windows/runner/Release
           retention-days: 5
-
-  release:
-    needs: [build-android, build-windows]
-    runs-on: ubuntu-latest
-    if: success() && (needs.build-android.result == 'success' || needs.build-windows.result == 'success')
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download APK artifacts
-        if: needs.build-android.result == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-        with:
-          pattern: nbox-*
-          merge-multiple: true
-
-      - name: Download Windows artifact
-        if: needs.build-windows.result == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          name: nbox-windows
-          path: artifacts
-
-      - name: Prepare Release
-        run: |
-          mkdir -p artifacts
-          cd artifacts
-          for f in app-*-release.apk; do
-            if [ -f "$f" ]; then
-              case "$f" in
-                *arm64*) mv "$f" "nbox-1.0.0-arm64-v8a-release.apk" ;;
-                *armeabi*) mv "$f" "nbox-1.0.0-armeabi-v7a-release.apk" ;;
-                *x86_64*) mv "$f" "nbox-1.0.0-x86_64-release.apk" ;;
-                *) mv "$f" "nbox-1.0.0-$f" ;;
-              esac
-            fi
-          done
-          if [ -d "nbox-windows" ]; then
-            mkdir -p nbox-1.0.0-windows
-            mv nbox-windows/* nbox-1.0.0-windows/ 2>/dev/null || mv nbox-windows nbox-1.0.0-windows
-          fi
-          ls -la
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v1.0.0
-          name: Nbox v1.0.0 Release
-          draft: false
-          prerelease: false
-          files: artifacts/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

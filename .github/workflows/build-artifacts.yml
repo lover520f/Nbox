@@ -21,23 +21,12 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: |
-          flutter pub get
-          flutter doctor
+        run: flutter pub get
 
       - name: Build Android APK
-        run: |
-          flutter build apk --release --split-per-abi 2>&1 || true
-        continue-on-error: true
-
-      - name: Show build output
-        if: always()
-        run: |
-          ls -la build/app/outputs/flutter-apk/ 2>/dev/null || echo "No APK output"
-          cat build/app/outputs/flutter-apk/*.log 2>/dev/null || echo "No log files"
+        run: flutter build apk --release --split-per-abi
 
       - name: Upload ARM64 APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nbox-arm64
@@ -45,7 +34,6 @@ jobs:
           retention-days: 5
 
       - name: Upload ARMv7 APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nbox-arm32
@@ -53,7 +41,6 @@ jobs:
           retention-days: 5
 
       - name: Upload x86_64 APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nbox-x64
@@ -73,22 +60,12 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: |
-          flutter pub get
-          flutter doctor
+        run: flutter pub get
 
       - name: Build Windows
-        run: |
-          flutter build windows --release 2>&1 || true
-        continue-on-error: true
-
-      - name: Show build output
-        if: always()
-        run: |
-          ls -la build/windows/runner/Release/ 2>$null || echo "No Windows output"
+        run: flutter build windows --release
 
       - name: Upload Windows
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nbox-windows
@@ -98,59 +75,53 @@ jobs:
   release:
     needs: [build-android, build-windows]
     runs-on: ubuntu-latest
-    if: always()
+    if: success() && (needs.build-android.result == 'success' || needs.build-windows.result == 'success')
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download ARM64 APK
-        if: needs.build-android.outputs.nbox-arm64 == 'success'
+      - name: Download APK artifacts
+        if: needs.build-android.result == 'success'
         uses: actions/download-artifact@v4
         with:
-          name: nbox-arm64
           path: artifacts
-
-      - name: Download ARMv7 APK
-        if: needs.build-android.outputs.nbox-arm32 == 'success'
-        uses: actions/download-artifact@v4
         with:
-          name: nbox-arm32
-          path: artifacts
+          pattern: nbox-*
+          merge-multiple: true
 
-      - name: Download x86_64 APK
-        if: needs.build-android.outputs.nbox-x64 == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          name: nbox-x64
-          path: artifacts
-
-      - name: Download Windows
-        if: needs.build-windows.outputs.nbox-windows == 'success'
+      - name: Download Windows artifact
+        if: needs.build-windows.result == 'success'
         uses: actions/download-artifact@v4
         with:
           name: nbox-windows
           path: artifacts
 
       - name: Prepare Release
-        if: always()
         run: |
+          mkdir -p artifacts
           cd artifacts
-          for f in *.apk; do mv "$f" "nbox-1.0.0-$f" 2>/dev/null || true; done
+          for f in app-*-release.apk; do
+            if [ -f "$f" ]; then
+              case "$f" in
+                *arm64*) mv "$f" "nbox-1.0.0-arm64-v8a-release.apk" ;;
+                *armeabi*) mv "$f" "nbox-1.0.0-armeabi-v7a-release.apk" ;;
+                *x86_64*) mv "$f" "nbox-1.0.0-x86_64-release.apk" ;;
+                *) mv "$f" "nbox-1.0.0-$f" ;;
+              esac
+            fi
+          done
           if [ -d "nbox-windows" ]; then
-            mv nbox-windows nbox-1.0.0-windows
-            cd nbox-1.0.0-windows
-            for f in *.exe; do mv "$f" "nbox-1.0.0-$f" 2>/dev/null || true; done
+            mkdir -p nbox-1.0.0-windows
+            mv nbox-windows/* nbox-1.0.0-windows/ 2>/dev/null || mv nbox-windows nbox-1.0.0-windows
           fi
-          cd ..
           ls -la
 
       - name: Create Release
-        if: needs.build-android.outputs.nbox-arm64 == 'success' || needs.build-windows.outputs.nbox-windows == 'success'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v1.0.0
           name: Nbox v1.0.0 Release
           draft: false
           prerelease: false
-          files: artifacts/**
+          files: artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

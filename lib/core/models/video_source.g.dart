@@ -245,7 +245,7 @@ class VideoAdapter extends TypeAdapter<Video> {
       ..writeByte(12)
       ..write(obj.vodPlayFrom)
       ..writeByte(13)
-      ..write(obj.vodUrl);
+      ..write(obj.vodPlayUrl);
   }
 
   @override

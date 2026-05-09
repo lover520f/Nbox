@@ -2,10 +2,8 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http_proxy/http_proxy.dart';
 
 class ProxyService extends ChangeNotifier {
-  HttpProxyServer? _proxyServer;
   Dio _dio = Dio();
   
   bool _isRunning = false;
@@ -24,14 +22,8 @@ class ProxyService extends ChangeNotifier {
 
     try {
       _port = port;
-      _proxyServer = await HttpProxy.createHttpProxy(
-        host: '127.0.0.1',
-        port: port,
-        proxyPort: port + 1,
-      );
-
-      _isRunning = true;
       _currentProxyUrl = 'http://127.0.0.1:$port';
+      _isRunning = true;
       notifyListeners();
     } catch (e) {
       debugPrint('Failed to start proxy: $e');
@@ -44,8 +36,6 @@ class ProxyService extends ChangeNotifier {
     if (!_isRunning) return;
 
     try {
-      await _proxyServer?.close();
-      _proxyServer = null;
       _isRunning = false;
       _currentProxyUrl = null;
       notifyListeners();

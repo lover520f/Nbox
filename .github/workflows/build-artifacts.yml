@@ -1,0 +1,119 @@
+name: Build Artifacts
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+          cache-dependency-path: pubspec.lock
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build Android APK
+        run: flutter build apk --release -o releases/nbox-release.apk
+      
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: nbox-android-apk
+          path: releases/nbox-release.apk
+
+  build-android-tv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+          cache-dependency-path: pubspec.lock
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build Android TV APK
+        run: |
+          flutter build apk --release -o releases/nbox-tv-release.apk
+      
+      - name: Upload Android TV APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: nbox-android-tv-apk
+          path: releases/nbox-tv-release.apk
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+          cache-dependency-path: pubspec.lock
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build Windows
+        run: |
+          flutter build windows --release -o releases/nbox-windows
+          if (Test-Path "releases/nbox-windows/runner/nbox.exe") {
+            Copy-Item "releases/nbox-windows/runner/nbox.exe" "releases/nbox-windows/nbox.exe"
+          }
+      
+      - name: Upload Windows EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: nbox-windows-exe
+          path: releases/nbox-windows/nbox.exe
+
+  build-windows-zip:
+    runs-on: windows-latest
+    needs: build-windows
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+          cache-dependency-path: pubspec.lock
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build Windows
+        run: flutter build windows --release -o releases/nbox-windows
+      
+      - name: Create ZIP
+        shell: bash
+        run: |
+          cd releases
+          powershell -Command "Compress-Archive -Path 'nbox-windows/*' -DestinationPath 'nbox-windows.zip' -Force"
+      
+      - name: Upload Windows ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: nbox-windows-zip
+          path: releases/nbox-windows.zip

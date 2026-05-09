@@ -12,6 +12,8 @@ import 'package:nbox/core/services/player_service.dart';
 import 'package:nbox/core/services/proxy_service.dart';
 import 'package:nbox/core/models/video_source.dart';
 
+const String appVersion = '1.0.0';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -26,7 +28,7 @@ void main() async {
     await windowManager.ensureInitialized();
     WindowManager.instance.setMinimumSize(const Size(1280, 720));
     WindowManager.instance.setMaximumSize(const Size(1920, 1080));
-    await windowManager.setTitle('Nbox - 牛盒');
+    await windowManager.setTitle('Nbox 牛盒 v$appVersion');
   }
   
   SystemChrome.setPreferredOrientations([

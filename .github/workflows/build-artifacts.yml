@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -25,10 +25,24 @@ jobs:
 
       - name: Build Android APK
         run: |
-          flutter build apk --release --split-per-abi
-          ls -la build/app/outputs/flutter-apk/
+          set +e
+          flutter build apk --release --split-per-abi 2>&1 | tee build.log
+          exit_code=${PIPESTATUS[0]}
+          echo "Build exit code: $exit_code"
+          if [ $exit_code -ne 0 ]; then
+            echo "=== Build failed, showing last 100 lines of log ==="
+            tail -100 build.log
+          fi
+          exit $exit_code
+
+      - name: Show output
+        if: always()
+        run: |
+          ls -la build/app/outputs/flutter-apk/ 2>/dev/null || echo "No APK output directory"
+          cat build.log 2>/dev/null | tail -50 || echo "No log file"
 
       - name: Upload artifacts
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nbox-apks
@@ -38,6 +52,7 @@ jobs:
   release-android:
     needs: build-android
     runs-on: ubuntu-latest
+    if: needs.build-android.result == 'success'
     steps:
       - uses: actions/checkout@v4
 
@@ -92,10 +107,23 @@ jobs:
 
       - name: Build Windows
         run: |
-          flutter build windows --release
-          dir build\windows\runner\Release
+          $ErrorActionPreference = "Continue"
+          flutter build windows --release 2>&1 | Tee-Object -File build.log
+          $exit_code = $LASTEXITCODE
+          Write-Host "Build exit code: $exit_code"
+          if ($exit_code -ne 0) {
+            Write-Host "=== Build failed ==="
+            Get-Content build.log | Select-Object -Last 100
+          }
+          exit $exit_code
+
+      - name: Show output
+        if: always()
+        run: |
+          ls build\windows\runner\Release 2>$null || echo "No output directory"
 
       - name: Upload artifacts
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nbox-windows

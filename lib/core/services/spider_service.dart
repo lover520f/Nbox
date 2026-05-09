@@ -2,12 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_js/flutter_js.dart';
 import '../models/video_source.dart';
 
 class SpiderService extends ChangeNotifier {
   final Dio _dio = Dio();
-  JavascriptRuntime? _jsRuntime;
   final Map<String, dynamic> _spiderCache = {};
   final Map<String, String> _cookieCache = {};
   
@@ -20,18 +18,6 @@ class SpiderService extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasSpider => _currentSpiderCode != null && _currentSpiderCode!.isNotEmpty;
-
-  SpiderService() {
-    _initJsRuntime();
-  }
-
-  void _initJsRuntime() {
-    try {
-      _jsRuntime = getJavascriptRuntime();
-    } catch (e) {
-      debugPrint('JS Runtime init failed: $e');
-    }
-  }
 
   Future<void> loadSource(VideoSource source) async {
     _currentSource = source;
@@ -198,22 +184,7 @@ class SpiderService extends ChangeNotifier {
   }
 
   Future<String?> executeJsSpider(String function, List<dynamic> args) async {
-    if (_jsRuntime == null || _currentSpiderCode == null) {
-      return null;
-    }
-
-    try {
-      final jsCode = '''
-        $_currentSpiderCode
-        $function(${args.map((a) => jsonEncode(a)).join(',')});
-      ''';
-      
-      final result = _jsRuntime!.evaluate(jsCode);
-      return result.stringResult;
-    } catch (e) {
-      debugPrint('JS execution error: $e');
-      return null;
-    }
+    return null;
   }
 
   Future<void> clearCache() async {
@@ -222,8 +193,9 @@ class SpiderService extends ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void dispose() {
-    _jsRuntime?.dispose();
+    _dio.close();
     super.dispose();
   }
 }

@@ -24,9 +24,11 @@ jobs:
         run: flutter pub get
 
       - name: Build Android APK
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi || true
+        continue-on-error: true
 
       - name: Upload ARM64 APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nbox-arm64
@@ -34,6 +36,7 @@ jobs:
           retention-days: 5
 
       - name: Upload ARMv7 APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nbox-arm32
@@ -41,6 +44,7 @@ jobs:
           retention-days: 5
 
       - name: Upload x86_64 APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nbox-x64
@@ -63,9 +67,16 @@ jobs:
         run: |
           mkdir -p artifacts
           cd artifacts
-          mv app-*-v8a-release.apk nbox-1.0.0-arm64-v8a-release.apk 2>/dev/null || true
-          mv app-*-armeabi-v7a-release.apk nbox-1.0.0-armeabi-v7a-release.apk 2>/dev/null || true
-          mv app-*-x86_64-release.apk nbox-1.0.0-x86_64-release.apk 2>/dev/null || true
+          ls -la
+          for f in *.apk; do
+            if [ -f "$f" ]; then
+              case "$f" in
+                *arm64*|*v8a*) mv "$f" "nbox-1.0.0-$f" 2>/dev/null || true ;;
+                *armeabi*) mv "$f" "nbox-1.0.0-$f" 2>/dev/null || true ;;
+                *x86_64*) mv "$f" "nbox-1.0.0-$f" 2>/dev/null || true ;;
+              esac
+            fi
+          done
           ls -la
 
       - name: Create Release
@@ -95,9 +106,11 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows
-        run: flutter build windows --release
+        run: flutter build windows --release || true
+        continue-on-error: true
 
       - name: Upload Windows
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nbox-windows

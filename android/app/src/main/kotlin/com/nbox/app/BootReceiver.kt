@@ -1,4 +1,4 @@
-package com.example.flutter_tv
+package com.nbox.app
 
 import android.content.BroadcastReceiver
 import android.content.Context

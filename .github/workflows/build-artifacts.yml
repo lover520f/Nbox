@@ -24,57 +24,42 @@ jobs:
         run: flutter pub get
 
       - name: Build Android APK
-        run: flutter build apk --release --split-per-abi || true
-        continue-on-error: true
+        run: |
+          flutter build apk --release --split-per-abi
+          ls -la build/app/outputs/flutter-apk/
 
-      - name: Upload ARM64 APK
-        if: success()
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: nbox-arm64
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
-          retention-days: 5
-
-      - name: Upload ARMv7 APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: nbox-arm32
-          path: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
-          retention-days: 5
-
-      - name: Upload x86_64 APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: nbox-x64
-          path: build/app/outputs/flutter-apk/app-x86_64-release.apk
+          name: nbox-apks
+          path: build/app/outputs/flutter-apk/
           retention-days: 5
 
   release-android:
     needs: build-android
     runs-on: ubuntu-latest
-    if: needs.build-android.result == 'success'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all APK artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
+          name: nbox-apks
           path: artifacts
 
       - name: Prepare Release
         run: |
-          mkdir -p artifacts
           cd artifacts
           ls -la
           for f in *.apk; do
-            if [ -f "$f" ]; then
-              case "$f" in
-                *arm64*|*v8a*) mv "$f" "nbox-1.0.0-$f" 2>/dev/null || true ;;
-                *armeabi*) mv "$f" "nbox-1.0.0-$f" 2>/dev/null || true ;;
-                *x86_64*) mv "$f" "nbox-1.0.0-$f" 2>/dev/null || true ;;
-              esac
+            newname=""
+            case "$f" in
+              *arm64*|*v8a*) newname="nbox-1.0.0-$f" ;;
+              *armeabi*) newname="nbox-1.0.0-$f" ;;
+              *x86_64*) newname="nbox-1.0.0-$f" ;;
+            esac
+            if [ -n "$newname" ] && [ -f "$f" ]; then
+              mv "$f" "$newname"
             fi
           done
           ls -la
@@ -106,11 +91,11 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows
-        run: flutter build windows --release || true
-        continue-on-error: true
+        run: |
+          flutter build windows --release
+          dir build\windows\runner\Release
 
-      - name: Upload Windows
-        if: success()
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: nbox-windows

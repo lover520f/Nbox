@@ -21,4 +21,6 @@ class FlutterWindow : public Win32Window {
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
 };
 
+int RunApplication(FlutterWindow* window);
+
 #endif  // FLUTTER_WINDOW_H_

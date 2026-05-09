@@ -22,7 +22,10 @@ jobs:
         run: flutter pub get
       
       - name: Build Android APK
-        run: flutter build apk --release -o releases/nbox-1.0.0.apk
+        run: |
+          flutter build apk --release
+          mkdir -p releases
+          mv build/app/outputs/flutter-apk/app-release.apk releases/nbox-1.0.0.apk
       
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
@@ -46,20 +49,23 @@ jobs:
         run: flutter pub get
       
       - name: Build Windows
-        run: flutter build windows --release -o releases/nbox-windows
-      
-      - name: Rename exe
         shell: bash
-        run: mv releases/nbox-windows/runner/*.exe releases/nbox-windows/nbox-1.0.0.exe 2>/dev/null || true
+        run: |
+          flutter build windows --release
+          mkdir -p releases
+          if [ -f "build/windows/runner/nbox.exe" ]; then
+            cp "build/windows/runner/nbox.exe" "releases/nbox-1.0.0.exe"
+            cd build/windows/runner && powershell -Command "Compress-Archive -Path '*' -DestinationPath '../../../releases/nbox-windows-1.0.0.zip' -Force"
+          fi
       
       - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
         with:
           name: nbox-windows-exe
-          path: releases/nbox-windows/nbox-1.0.0.exe
+          path: releases/nbox-1.0.0.exe
       
       - name: Upload Windows ZIP
         uses: actions/upload-artifact@v4
         with:
           name: nbox-windows-zip
-          path: releases/nbox-windows.zip
+          path: releases/nbox-windows-1.0.0.zip

@@ -11,4 +11,6 @@ set(CMAKE_BUILD_TYPE ${BUILD_TYPE} CACHE STRING "")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/runner")
 
-add_subdirectory(${FLUTTER_ROOT} bin)
+add_subdirectory(flutter)
+
+set(FLUTTER_ENGINE_LIBRARY "${FLUTTER_LIBRARY}")

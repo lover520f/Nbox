@@ -64,3 +64,6 @@ build/
 
 # Logs
 *.log
+
+# Disabled modules
+android/app-tv.disabled/

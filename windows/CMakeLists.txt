@@ -1,111 +1,48 @@
-cmake_minimum_required(VERSION 3.10)
-
-project(nbox VERSION 1.0.0 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.14)
+project(nbox LANGUAGES CXX)
 
 set(BINARY_NAME "nbox")
 
-cmake_policy(SET CMP0079 NEW)
+cmake_policy(SET CMP0063 NEW)
+
+set(FLUTTER_VERSION "1.0.0" PARENT_SCOPE)
+set(FLUTTER_VERSION_MAJOR 1 PARENT_SCOPE)
+set(FLUTTER_VERSION_MINOR 0 PARENT_SCOPE)
+set(FLUTTER_VERSION_PATCH 0 PARENT_SCOPE)
+set(FLUTTER_VERSION_TWEAK 0 PARENT_SCOPE)
 
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 
-set(CMAKE_SYSTEM_PROCESSOR "x86_64")
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64|aarch64)")
-    set(CMAKE_SYSTEM_PROCESSOR "aarch64")
-endif()
-
-set(FLUTTER_ROOT "$ENV{FLUTTER_ROOT}")
-if(NOT FLUTTER_ROOT)
-    set(FLUTTER_ROOT "$CMAKE_CURRENT_SOURCE_DIR/../../flutter")
-endif()
-
-set(FLUTTER_ENGINE_LIBRARY "${FLUTTER_ROOT}/bin/cache/artifacts/engine/windows-x64/libflutter.dll")
-set(FLUTTER_LIBRARY "${FLUTTER_ROOT}/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll")
-set(FLUTTER_LIBRARY_RENDERER "${FLUTTER_ROOT}/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll")
-set(FLUTTER_LIBRARY_GL "${FLUTTER_ROOT}/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll")
-
-set(RUNTIME_LIBRARY_DIR "$<TARGET_FILE_DIR:nbox>")
-set(RUNTIME_LIBRARY_DIR_DEBUG "$<TARGET_FILE_DIR:nbox>")
-
-set(FLUTTER_LIBRARY "${FLUTTER_ROOT}/bin/flutter_windows.dll")
-set(FLUTTER_LIBRARY_RENDERER "${FLUTTER_ROOT}/bin/flutter_windows.dll")
-set(FLUTTER_LIBRARY_GL "${FLUTTER_ROOT}/bin/flutter_windows.dll")
-set(RUNTIME_LIBRARY_DIR "$<TARGET_FILE_DIR:nbox>")
-set(RUNTIME_LIBRARY_DIR_DEBUG "$<TARGET_FILE_DIR:nbox>")
-
-set(FLUTTER_LIBRARY "${FLUTTER_ROOT}/bin/cache/artifacts/engine/windows-x64/libflutter.dll")
-set(FLUTTER_LIBRARY_RENDERER "${FLUTTER_ROOT}/bin/cache/artifacts/engine/windows-x64/flutter_windows.dll")
-set(FLUTTER_LIBRARY_GL "${FLUTTER_ROOT}/bin/flutter_windows.dll")
-
-add_subdirectory(${FLUTTER_ROOT})
-
-set(BUILD_ASSETS_DIR "${FLUTTER_ROOT}/build/assetSC")
-set(FLUTTER_ASSET_DIR "${FLUTTER_ROOT}/build/ios/iphonesimulator/Assets")
-
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/data/flutter_assets")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-
-set(BUILD_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/windows")
-
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(CMAKE_BUILD_TYPE MATCHES "Debug")
-    set(BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/windows")
-    set(FLUTTER_LIBRARY "${BUILD_DIR}/artifacts/flutter_windows.dll")
-    set(FLUTTER_LIBRARY_RENDERER "${BUILD_DIR}/artifacts/flutter_windows.dll")
-    set(FLUTTER_LIBRARY_GL "${BUILD_DIR}/artifacts/flutter_windows.dll")
-endif()
+set(EPHEMERAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ephemeral")
+include("${EPHEMERAL_DIR}/generated_config.cmake")
 
-add_library(${BINARY_NAME} SHARED
-  "${FLUTTER_ROOT}/cpp/client_wrapper/flutter_engine_method_channel.cc"
-  "${FLUTTER_ROOT}/cpp/client_wrapper/plugin_registry.cc"
+set(PLUGINS_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/plugins")
+
+get_filename_component(FLUTTER_ROOT "${EPHEMERAL_DIR}" ABSOLUTE CACHE)
+
+include("${EPHEMERAL_DIR}/plugin_symlinks/windows/flutter_plugins.cmake")
+
+set(WRAPPER_ROOT "${EPHEMERAL_DIR}/cpp_client_wrapper")
+
+add_subdirectory("${WRAPPER_ROOT}" cpp_client_wrapper)
+
+set(FLUTTER_LIBRARY "${EPHEMERAL_DIR}/flutter_windows.dll")
+
+set(RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/runner")
+
+add_executable(${BINARY_NAME} WIN32
   "flutter_window.cc"
   "main.cc"
+  "win32_window.cc"
+  ${PLUGIN_SRCS}
 )
 
-if(NOT DEFINED FLUTTER_LIBRARY)
-    set(FLUTTER_LIBRARY "${FLUTTER_ROOT}/bin/flutter_windows.dll")
-endif()
-
-if(NOT DEFINED FLUTTER_LIBRARY_RENDERER)
-    set(FLUTTER_LIBRARY_RENDERER "${FLUTTER_ROOT}/bin/flutter_windows.dll")
-endif()
+apply_standard_settings(${BINARY_NAME})
+target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX" "WIN32_LEAN_AND_MEAN")
+target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
+target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 add_dependencies(${BINARY_NAME} flutter_assemble)
-
-set(BINARY_NAME "nbox")
-set(BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/windows")
-
-if(NOT EXISTS "${FLUTTER_LIBRARY}")
-    message(FATAL_ERROR "Flutter library not found at: ${FLUTTER_LIBRARY}")
-endif()
-
-set_target_properties(${BINARY_NAME} PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY "${BUILD_DIR}/runner"
-)
-
-set(BINARY_OUTPUT "${BUILD_DIR}/runner/${BINARY_NAME}.exe")
-
-add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${FLUTTER_LIBRARY}
-    "${BUILD_DIR}/runner/"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${FLUTTER_LIBRARY_RENDERER}
-    "${BUILD_DIR}/runner/"
-)
-
-if(NOT EXISTS "${FLUTTER_LIBRARY_GL}")
-    set(FLUTTER_LIBRARY_GL "${FLUTTER_LIBRARY}")
-endif()
-
-add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${FLUTTER_LIBRARY_GL}
-    "${BUILD_DIR}/runner/"
-)
-
-set(BINARY_DIR "${BUILD_DIR}/runner")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${BINARY_DIR}")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${BINARY_DIR}")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${BINARY_DIR}")

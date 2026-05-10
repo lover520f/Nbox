@@ -18,7 +18,6 @@ class FlutterWindow : public Win32Window {
 
  private:
   flutter::DartProject project_;
-  std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
 };
 
 int RunApplication(FlutterWindow* window);

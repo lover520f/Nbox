@@ -8,6 +8,10 @@
 #include <memory>
 #include <string>
 
+namespace flutter {
+class FlutterViewController;
+}
+
 class Win32Window {
  public:
   struct Point {
@@ -36,6 +40,8 @@ class Win32Window {
   void SetTitle(const std::wstring& title);
 
  protected:
+  static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam,
+                                 LPARAM lparam);
   virtual LRESULT MessageHandler(HWND hwnd, UINT const message,
                                  WPARAM const wparam,
                                  LPARAM const lparam) noexcept;
@@ -43,6 +49,8 @@ class Win32Window {
   virtual void OnCreate();
   virtual void OnDestroy();
   void Activate();
+
+  std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
 
  private:
   bool RegisterWindowClass();

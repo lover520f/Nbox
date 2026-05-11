@@ -43,18 +43,11 @@ class _MainPageState extends State<MainPage> {
     SettingPage(),
   ];
 
-  static const List<NavigationDestination> _navDestinations = [
-    NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: '首页'),
-    NavigationDestination(icon: Icon(Icons.live_tv_outlined), selectedIcon: Icon(Icons.live_tv), label: '直播'),
-    NavigationDestination(icon: Icon(Icons.favorite_outline), selectedIcon: Icon(Icons.favorite), label: '收藏'),
-    NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: '设置'),
-  ];
-
-  static const List<NavigationRailDestination> _railDestinations = [
-    NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: Text('首页')),
-    NavigationRailDestination(icon: Icon(Icons.live_tv_outlined), selectedIcon: Icon(Icons.live_tv), label: Text('直播')),
-    NavigationRailDestination(icon: Icon(Icons.favorite_outline), selectedIcon: Icon(Icons.favorite), label: Text('收藏')),
-    NavigationRailDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: Text('设置')),
+  static const List<_NavItem> _navItems = [
+    _NavItem(icon: Icons.home_outlined, selectedIcon: Icons.home, label: '首页'),
+    _NavItem(icon: Icons.live_tv_outlined, selectedIcon: Icons.live_tv, label: '直播'),
+    _NavItem(icon: Icons.favorite_outline, selectedIcon: Icons.favorite, label: '收藏'),
+    _NavItem(icon: Icons.settings_outlined, selectedIcon: Icons.settings, label: '设置'),
   ];
 
   @override
@@ -95,7 +88,11 @@ class _MainPageState extends State<MainPage> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) => setState(() => _currentIndex = index),
-        destinations: _navDestinations,
+        destinations: _navItems.map((item) => NavigationDestination(
+          icon: Icon(item.icon),
+          selectedIcon: Icon(item.selectedIcon),
+          label: item.label,
+        )).toList(),
       ),
     );
   }
@@ -120,8 +117,9 @@ class _MainPageState extends State<MainPage> {
       height: 48,
       color: Theme.of(context).colorScheme.surface,
       child: Row(
-        children: _navDestinations.map((dest) {
-          final index = _navDestinations.indexOf(dest);
+        children: _navItems.asMap().entries.map((entry) {
+          final index = entry.key;
+          final item = entry.value;
           final isSelected = index == _currentIndex;
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -133,9 +131,9 @@ class _MainPageState extends State<MainPage> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(isSelected ? dest.selectedIcon : dest.icon, size: 20),
+                  Icon(isSelected ? item.selectedIcon : item.icon, size: 20),
                   const SizedBox(width: 4),
-                  Text(dest.label, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                  Text(item.label, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
                 ],
               ),
             ),
@@ -153,7 +151,11 @@ class _MainPageState extends State<MainPage> {
             selectedIndex: _currentIndex,
             onDestinationSelected: (index) => setState(() => _currentIndex = index),
             labelType: NavigationRailLabelType.all,
-            destinations: _railDestinations,
+            destinations: _navItems.map((item) => NavigationRailDestination(
+              icon: Icon(item.icon),
+              selectedIcon: Icon(item.selectedIcon),
+              label: Text(item.label),
+            )).toList(),
           ),
           const VerticalDivider(thickness: 1, width: 1),
           Expanded(child: _pages[_currentIndex]),
@@ -161,4 +163,11 @@ class _MainPageState extends State<MainPage> {
       ),
     );
   }
+}
+
+class _NavItem {
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  const _NavItem({required this.icon, required this.selectedIcon, required this.label});
 }

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/services/config_service.dart';
 import '../../core/services/proxy_service.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/models/video_source.dart';
 
 class SettingPage extends StatelessWidget {
   const SettingPage({super.key});
@@ -88,10 +89,17 @@ class SettingPage extends StatelessWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.link),
-              title: const Text('配置URL'),
-              subtitle: Text(configService.activeSource?.name ?? '未设置'),
+              title: const Text('配置地址'),
+              subtitle: Text(StorageService.getString('config_url') ?? '未设置'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showConfigUrlDialog(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.add_link),
+              title: const Text('添加单源'),
+              subtitle: const Text('添加单个数据源地址'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showAddSourceDialog(context),
             ),
             ListTile(
               leading: const Icon(Icons.source),
@@ -114,8 +122,8 @@ class SettingPage extends StatelessWidget {
             SwitchListTile(
               secondary: const Icon(Icons.vpn_key),
               title: const Text('启用代理'),
-              subtitle: Text(proxyService.isRunning 
-                  ? '运行中: ${proxyService.currentProxyUrl}' 
+              subtitle: Text(proxyService.isRunning
+                  ? '运行中: ${proxyService.currentProxyUrl}'
                   : '未启动'),
               value: proxyService.isRunning,
               onChanged: (value) {
@@ -189,11 +197,11 @@ class SettingPage extends StatelessWidget {
         ListTile(
           leading: const Icon(Icons.info_outline),
           title: const Text('版本'),
-          subtitle: const Text('1.0.0'),
+          subtitle: const Text('1.2.0'),
         ),
         ListTile(
           leading: const Icon(Icons.code),
-          title: const Text('Flutter TV'),
+          title: const Text('牛盒'),
           subtitle: const Text('基于 CatVod 架构的全平台影视播放器'),
         ),
       ],
@@ -201,17 +209,27 @@ class SettingPage extends StatelessWidget {
   }
 
   void _showConfigUrlDialog(BuildContext context) {
-    final controller = TextEditingController();
+    final controller = TextEditingController(text: StorageService.getString('config_url') ?? '');
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('输入配置URL'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: 'https://example.com/config.json',
-            labelText: '配置URL',
-          ),
+        title: const Text('输入配置地址'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintText: 'https://example.com/config.json',
+                labelText: '配置URL',
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '配置地址将自动保存，下次启动时加载',
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -221,12 +239,67 @@ class SettingPage extends StatelessWidget {
           ElevatedButton(
             onPressed: () async {
               if (controller.text.isNotEmpty) {
+                await StorageService.saveString('config_url', controller.text);
                 final configService = context.read<ConfigService>();
                 await configService.loadConfig(controller.text);
-                Navigator.pop(context);
+                if (context.mounted) Navigator.pop(context);
               }
             },
             child: const Text('加载'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddSourceDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final apiController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('添加数据源'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                hintText: '数据源名称',
+                labelText: '名称',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: apiController,
+              decoration: const InputDecoration(
+                hintText: 'https://example.com/api.php/provide/vod/',
+                labelText: 'API地址',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (apiController.text.isNotEmpty) {
+                final source = VideoSource(
+                  key: apiController.text,
+                  name: nameController.text.isEmpty ? '自定义源' : nameController.text,
+                  api: apiController.text,
+                  type: 1,
+                );
+                final configService = context.read<ConfigService>();
+                configService.addSource(source);
+                configService.setActiveSource(source);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('添加'),
           ),
         ],
       ),
@@ -243,25 +316,33 @@ class SettingPage extends StatelessWidget {
             content: SizedBox(
               width: 300,
               height: 400,
-              child: ListView.builder(
-                itemCount: configService.sources.length,
-                itemBuilder: (context, index) {
-                  final source = configService.sources[index];
-                  final isActive = source.key == configService.activeSource?.key;
-                  return ListTile(
-                    leading: Icon(
-                      isActive ? Icons.radio_button_checked : Icons.radio_button_off,
-                      color: isActive ? Theme.of(context).primaryColor : null,
-                    ),
-                    title: Text(source.name ?? '未知'),
-                    subtitle: Text(source.api ?? ''),
-                    onTap: () {
-                      configService.setActiveSource(source);
-                      Navigator.pop(context);
+              child: configService.sources.isEmpty
+                ? const Center(child: Text('暂无数据源'))
+                : ListView.builder(
+                    itemCount: configService.sources.length,
+                    itemBuilder: (context, index) {
+                      final source = configService.sources[index];
+                      final isActive = source.key == configService.activeSource?.key;
+                      return ListTile(
+                        leading: Icon(
+                          isActive ? Icons.radio_button_checked : Icons.radio_button_off,
+                          color: isActive ? Theme.of(context).primaryColor : null,
+                        ),
+                        title: Text(source.name ?? '未知'),
+                        subtitle: Text(source.api ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 20),
+                          onPressed: () {
+                            configService.removeSource(source);
+                          },
+                        ),
+                        onTap: () {
+                          configService.setActiveSource(source);
+                          Navigator.pop(context);
+                        },
+                      );
                     },
-                  );
-                },
-              ),
+                  ),
             ),
           );
         },

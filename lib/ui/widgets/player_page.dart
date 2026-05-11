@@ -67,7 +67,6 @@ class _PlayerPageState extends State<PlayerPage> {
       final result = await spiderService.playerContent(
         flag: widget.sourceName,
         id: widget.url,
-        vipFlags: [],
       );
 
       String playUrl = widget.url;

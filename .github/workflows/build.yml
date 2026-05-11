@@ -24,17 +24,19 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Android APK
+      - name: Build Android Phone APK
         run: flutter build apk --release
 
-      - name: Rename APK
-        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/nbox-android.apk
+      - name: Rename Phone APK
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/niuhe-phone-${VERSION}.apk
 
-      - name: Upload APK artifact
+      - name: Upload Phone APK
         uses: actions/upload-artifact@v4
         with:
-          name: nbox-apk
-          path: build/app/outputs/flutter-apk/nbox-android.apk
+          name: niuhe-phone-apk
+          path: build/app/outputs/flutter-apk/niuhe-phone-*.apk
           retention-days: 5
 
   build-windows:
@@ -56,16 +58,17 @@ jobs:
 
       - name: Package Windows
         run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
           cd build/windows/x64/runner/Release
-          Compress-Archive -Path * -DestinationPath ../../../../../nbox-windows.zip
+          Compress-Archive -Path * -DestinationPath "../../../../../niuhe-pc-$version.zip"
           cd ../../../../../
         shell: pwsh
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nbox-windows
-          path: nbox-windows.zip
+          name: niuhe-windows
+          path: niuhe-pc-*.zip
           retention-days: 5
 
   create-release:
@@ -75,23 +78,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download APK
+      - name: Download Phone APK
         uses: actions/download-artifact@v4
         with:
-          name: nbox-apk
+          name: niuhe-phone-apk
           path: artifacts
 
       - name: Download Windows
         uses: actions/download-artifact@v4
         with:
-          name: nbox-windows
+          name: niuhe-windows
           path: artifacts
         continue-on-error: true
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          name: Nbox ${{ github.ref_name }}
+          name: 牛盒 ${{ github.ref_name }}
           draft: false
           prerelease: false
           files: artifacts/*

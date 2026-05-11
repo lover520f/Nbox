@@ -1,37 +1,22 @@
 {
-  "spider": [
+  "sites": [
     {
-      "key": "default",
-      "name": "默认影视",
-      "api": "https://api.example.com/vod",
-      "type": 4,
-      "spider": "https://raw.githubusercontent.com/example/spider/main/spider.js",
+      "key": "csp_AppTT",
+      "name": "图图影视",
+      "type": 3,
+      "api": "https://freed.yuanhsing.cf/TV",
       "searchable": 1,
-      "changeable": 1,
       "quicksearch": 1,
-      "filter": 1,
-      "enabled": 1
+      "filterable": 1
     }
   ],
-  "lives": {
-    "type": 1,
-    "url": "https://raw.githubusercontent.com/example/live/main/live.txt"
-  },
-  "config": {
-    "ua": "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36",
-    "line": {
-      "type": "rect",
-      "ratio": 0.75
-    },
-    "wallpaper": "https://api.example.com/wallpaper",
-    "vipFlag": [
-      "iqiyi.com",
-      "vip.iqiyi.com",
-      "vip.youku.com",
-      "vip.mgtv.com",
-      "vip.qq.com"
-    ]
-  },
-  "proxy": [],
-  "hosts": []
+  "lives": [
+    {
+      "name": "直播",
+      "type": 0,
+      "url": "https://ghp.ci/https://raw.githubusercontent.com/qingwen02/TVBoxLive/main/live.txt",
+      "epg": "https://epg.112114.xyz/?ch={name}&date={date}"
+    }
+  ],
+  "wallpaper": "https://bing.img.run/uhd.php"
 }

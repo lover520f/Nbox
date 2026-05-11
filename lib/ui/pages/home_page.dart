@@ -18,7 +18,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   List<Video> _videos = [];
   List<Category> _categories = [];
-  Map<String, dynamic> _filters = {};
   bool _isLoading = true;
   String? _error;
   String? _selectedCategoryId;
@@ -30,51 +29,36 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
+    setState(() { _isLoading = true; _error = null; });
     try {
       final spiderService = context.read<SpiderService>();
       final configService = context.read<ConfigService>();
-      
       if (configService.activeSource != null) {
         await spiderService.loadSource(configService.activeSource!);
       }
-      
       final homeData = await spiderService.homeContent();
-      
+      if (!mounted) return;
       setState(() {
         _categories = (homeData['class'] as List?)
             ?.map((e) => Category.fromJson(e as Map<String, dynamic>))
             .toList() ?? [];
-        
         _videos = (homeData['list'] as List?)
             ?.map((e) => Video.fromJson(e as Map<String, dynamic>))
             .toList() ?? [];
-        
-        _filters = homeData['filters'] as Map<String, dynamic>? ?? {};
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (!mounted) return;
+      setState(() { _error = e.toString(); _isLoading = false; });
     }
   }
 
   Future<void> _loadCategory(String categoryId) async {
-    setState(() {
-      _isLoading = true;
-      _selectedCategoryId = categoryId;
-    });
-
+    setState(() { _isLoading = true; _selectedCategoryId = categoryId; });
     try {
       final spiderService = context.read<SpiderService>();
       final data = await spiderService.categoryContent(tid: categoryId);
-      
+      if (!mounted) return;
       setState(() {
         _videos = (data['list'] as List?)
             ?.map((e) => Video.fromJson(e as Map<String, dynamic>))
@@ -82,22 +66,17 @@ class _HomePageState extends State<HomePage> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (!mounted) return;
+      setState(() { _error = e.toString(); _isLoading = false; });
     }
   }
 
   Future<void> _search(String keyword) async {
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() { _isLoading = true; });
     try {
       final spiderService = context.read<SpiderService>();
       final data = await spiderService.searchContent(key: keyword);
-      
+      if (!mounted) return;
       setState(() {
         _videos = (data['list'] as List?)
             ?.map((e) => Video.fromJson(e as Map<String, dynamic>))
@@ -105,10 +84,8 @@ class _HomePageState extends State<HomePage> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (!mounted) return;
+      setState(() { _error = e.toString(); _isLoading = false; });
     }
   }
 
@@ -116,14 +93,10 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Flutter TV'),
+        title: const Text('牛盒'),
         actions: [
           const SourceSelector(),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: '刷新',
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData, tooltip: '刷新'),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(60),
@@ -133,72 +106,37 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
-      body: Column(
-        children: [
-          if (_categories.isNotEmpty)
-            CategoryTabs(
-              categories: _categories,
-              selectedId: _selectedCategoryId,
-              onCategorySelected: (id) => _loadCategory(id ?? ''),
-            ),
-          Expanded(
-            child: _buildContent(),
-          ),
-        ],
-      ),
+      body: Column(children: [
+        if (_categories.isNotEmpty)
+          CategoryTabs(categories: _categories, selectedId: _selectedCategoryId,
+            onCategorySelected: (id) => _loadCategory(id ?? '')),
+        Expanded(child: _buildContent()),
+      ]),
     );
   }
 
   Widget _buildContent() {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
-
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-            const SizedBox(height: 16),
-            Text('加载失败: $_error'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadData,
-              child: const Text('重试'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_videos.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.movie_filter, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('暂无内容'),
-          ],
-        ),
-      );
-    }
-
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_error != null) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+      const SizedBox(height: 16),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 32), child: Text('加载失败: $_error', textAlign: TextAlign.center)),
+      const SizedBox(height: 16),
+      ElevatedButton(onPressed: _loadData, child: const Text('重试')),
+    ]));
+    if (_videos.isEmpty) return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Icon(Icons.movie_filter, size: 64, color: Colors.grey),
+      SizedBox(height: 16),
+      Text('暂无内容'),
+      SizedBox(height: 8),
+      Text('请在设置中添加数据源', style: TextStyle(color: Colors.white54)),
+    ]));
     return GridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 250,
-        childAspectRatio: 0.65,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
+        maxCrossAxisExtent: 250, childAspectRatio: 0.65, crossAxisSpacing: 16, mainAxisSpacing: 16),
       itemCount: _videos.length,
-      itemBuilder: (context, index) {
-        return VideoCard(video: _videos[index]);
-      },
+      itemBuilder: (context, index) => VideoCard(video: _videos[index]),
     );
   }
 }

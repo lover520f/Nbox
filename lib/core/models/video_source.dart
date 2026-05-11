@@ -34,6 +34,9 @@ class VideoSource extends HiveObject {
   @HiveField(9)
   int? enabled;
 
+  @HiveField(10)
+  int? filterable;
+
   VideoSource({
     this.key,
     this.name,
@@ -45,6 +48,7 @@ class VideoSource extends HiveObject {
     this.quicksearch = 1,
     this.filter = 1,
     this.enabled = 1,
+    this.filterable,
   });
 
   factory VideoSource.fromJson(Map<String, dynamic> json) {
@@ -59,6 +63,7 @@ class VideoSource extends HiveObject {
       quicksearch: json['quicksearch'] as int? ?? 1,
       filter: json['filter'] as int? ?? 1,
       enabled: json['enabled'] as int? ?? 1,
+      filterable: json['filterable'] as int?,
     );
   }
 
@@ -73,6 +78,7 @@ class VideoSource extends HiveObject {
         'quicksearch': quicksearch,
         'filter': filter,
         'enabled': enabled,
+        'filterable': filterable,
       };
 
   bool get isEnabled => enabled == 1;
@@ -80,6 +86,7 @@ class VideoSource extends HiveObject {
   bool get isChangeable => changeable == 1;
   bool get isQuickSearch => quicksearch == 1;
   bool get hasFilter => filter == 1;
+  bool get isFilterable => filterable == 1;
 }
 
 @HiveType(typeId: 1)

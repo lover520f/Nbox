@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/video_source.dart';
 
@@ -9,120 +10,135 @@ class ConfigService extends ChangeNotifier {
   final Dio _dio = Dio();
   List<VideoSource> _sources = [];
   VideoSource? _activeSource;
-  Map<String, dynamic> _globalConfig = {};
-  Map<String, String> _liveConfig = {};
-  List<Map<String, dynamic>> _proxyRules = [];
-  List<Map<String, dynamic>> _hostRules = [];
-  
+  List<LiveGroup> _liveGroups = [];
+  String? _configUrl;
+  String? _wallpaper;
   bool _isLoading = false;
   String? _error;
 
   List<VideoSource> get sources => _sources;
   VideoSource? get activeSource => _activeSource;
-  Map<String, dynamic> get globalConfig => _globalConfig;
-  Map<String, String> get liveConfig => _liveConfig;
-  List<Map<String, dynamic>> get proxyRules => _proxyRules;
-  List<Map<String, dynamic>> get hostRules => _hostRules;
+  List<LiveGroup> get liveGroups => _liveGroups;
+  String? get configUrl => _configUrl;
+  String? get wallpaper => _wallpaper;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> loadConfig(String configUrl) async {
+  Future<void> loadConfig(String url) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
+      _configUrl = url;
+      final response = await _dio.get(url,
+          options: Options(
+              responseType: ResponseType.plain,
+              receiveTimeout: const Duration(seconds: 30)));
 
-      final response = await _dio.get(
-        configUrl,
-        options: Options(
-          responseType: ResponseType.plain,
-          receiveTimeout: const Duration(seconds: 30),
-        ),
-      );
+      final content = response.data.toString().trim();
+      Map<String, dynamic> config;
 
-      final config = jsonDecode(response.data);
-      
-      if (config['spider'] is List) {
-        _sources = (config['spider'] as List)
-            .map((e) => VideoSource.fromJson(e as Map<String, dynamic>))
-            .toList();
+      if (content.startsWith('{') || content.startsWith('[')) {
+        config = jsonDecode(content) as Map<String, dynamic>;
+      } else {
+        _isLoading = false;
+        _error = '不支持的配置格式';
+        notifyListeners();
+        return;
       }
 
-      if (config['lives'] is Map) {
-        _liveConfig = Map<String, String>.from(
-          (config['lives'] as Map).map((k, v) => MapEntry(k.toString(), v.toString())),
-        );
-      }
-
-      _globalConfig = config['config'] as Map<String, dynamic>? ?? {};
-      
-      _proxyRules = (config['proxy'] as List<dynamic>?)
-          ?.map((e) => e as Map<String, dynamic>)
-          .toList() ?? [];
-      
-      _hostRules = (config['hosts'] as List<dynamic>?)
-          ?.map((e) => e as Map<String, dynamic>)
-          .toList() ?? [];
-
-      if (_sources.isNotEmpty) {
-        _activeSource = _sources.firstWhere(
-          (s) => s.isEnabled,
-          orElse: () => _sources.first,
-        );
-      }
-
+      _parseConfig(config);
       _isLoading = false;
       notifyListeners();
     } catch (e) {
       _isLoading = false;
-      _error = 'Failed to load config: $e';
+      _error = '加载配置失败: $e';
       debugPrint(_error);
       notifyListeners();
     }
   }
 
   Future<void> loadConfigFromFile(String path) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
 
-      final file = File(path);
-      if (await file.exists()) {
-        final content = await file.readAsString();
-        final config = jsonDecode(content);
-        _parseConfig(config);
+    try {
+      String content;
+      if (path.startsWith('assets/')) {
+        content = await rootBundle.loadString(path);
+      } else {
+        final file = File(path);
+        if (await file.exists()) {
+          content = await file.readAsString();
+        } else {
+          _isLoading = false;
+          _error = '配置文件不存在: $path';
+          notifyListeners();
+          return;
+        }
       }
 
+      content = content.trim();
+      if (!content.startsWith('{') && !content.startsWith('[')) {
+        _isLoading = false;
+        _error = '不支持的配置格式';
+        notifyListeners();
+        return;
+      }
+
+      final config = jsonDecode(content) as Map<String, dynamic>;
+      _parseConfig(config);
       _isLoading = false;
       notifyListeners();
     } catch (e) {
       _isLoading = false;
-      _error = 'Failed to load config from file: $e';
+      _error = '加载配置文件失败: $e';
       debugPrint(_error);
       notifyListeners();
     }
   }
 
   void _parseConfig(Map<String, dynamic> config) {
-    if (config['spider'] is List) {
+    if (config['sites'] is List) {
+      _sources = (config['sites'] as List).map((e) {
+        final map = e as Map<String, dynamic>;
+        return VideoSource(
+          key: map['key']?.toString(),
+          name: map['name']?.toString(),
+          api: map['api']?.toString(),
+          type: map['type'] as int?,
+          spider: map['spider']?.toString() ?? map['jar']?.toString(),
+          searchable: map['searchable'] as int? ?? 1,
+          changeable: map['changeable'] as int? ?? 1,
+          quicksearch: map['quicksearch'] as int? ?? 1,
+          filter: map['filter'] as int? ?? 1,
+          filterable: map['filterable'] as int?,
+          enabled: 1,
+        );
+      }).toList();
+    } else if (config['spider'] is List) {
       _sources = (config['spider'] as List)
           .map((e) => VideoSource.fromJson(e as Map<String, dynamic>))
           .toList();
     }
 
-    if (config['lives'] is Map) {
-      _liveConfig = Map<String, String>.from(
-        (config['lives'] as Map).map((k, v) => MapEntry(k.toString(), v.toString())),
-      );
+    _liveGroups = [];
+    if (config['lives'] is List) {
+      for (var live in (config['lives'] as List)) {
+        if (live is Map<String, dynamic>) {
+          _liveGroups.add(LiveGroup(
+            name: live['name']?.toString() ?? '直播',
+            type: live['type'] as int? ?? 0,
+            url: live['url']?.toString(),
+            epg: live['epg']?.toString(),
+          ));
+        }
+      }
     }
 
-    _globalConfig = config['config'] as Map<String, dynamic>? ?? {};
-    _proxyRules = (config['proxy'] as List<dynamic>?)
-        ?.map((e) => e as Map<String, dynamic>)
-        .toList() ?? [];
-    _hostRules = (config['hosts'] as List<dynamic>?)
-        ?.map((e) => e as Map<String, dynamic>)
-        .toList() ?? [];
+    _wallpaper = config['wallpaper']?.toString();
 
     if (_sources.isNotEmpty) {
       _activeSource ??= _sources.first;
@@ -134,16 +150,27 @@ class ConfigService extends ChangeNotifier {
     notifyListeners();
   }
 
+  void addSource(VideoSource source) {
+    _sources.add(source);
+    _activeSource ??= source;
+    notifyListeners();
+  }
+
+  void removeSource(VideoSource source) {
+    _sources.remove(source);
+    if (_activeSource == source) {
+      _activeSource = _sources.isNotEmpty ? _sources.first : null;
+    }
+    notifyListeners();
+  }
+
   Future<void> saveConfig() async {
     try {
       final config = {
-        'spider': _sources.map((s) => s.toJson()).toList(),
-        'lives': _liveConfig,
-        'config': _globalConfig,
-        'proxy': _proxyRules,
-        'hosts': _hostRules,
+        'sites': _sources.map((s) => s.toJson()).toList(),
+        'lives': _liveGroups.map((g) => g.toJson()).toList(),
+        'wallpaper': _wallpaper,
       };
-
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/config.json');
       await file.writeAsString(jsonEncode(config));
@@ -151,43 +178,20 @@ class ConfigService extends ChangeNotifier {
       debugPrint('Failed to save config: $e');
     }
   }
+}
 
-  String? getProxyForHost(String host) {
-    for (final rule in _proxyRules) {
-      final hosts = rule['hosts'] as List<dynamic>?;
-      if (hosts == null) continue;
-      
-      for (final pattern in hosts) {
-        final regex = RegExp(pattern.toString().replaceAll('.', r'\.').replaceAll('*', '.*'));
-        if (regex.hasMatch(host)) {
-          final urls = rule['urls'] as List<dynamic>?;
-          if (urls != null && urls.isNotEmpty) {
-            return urls.first.toString();
-          }
-        }
-      }
-    }
-    return null;
-  }
+class LiveGroup {
+  final String name;
+  final int type;
+  final String? url;
+  final String? epg;
 
-  String? getHostRewrite(String host) {
-    for (final rule in _hostRules) {
-      if (rule['host']?.toString() == host) {
-        return rule['rewrite']?.toString();
-      }
-    }
-    return null;
-  }
+  LiveGroup({required this.name, this.type = 0, this.url, this.epg});
 
-  bool isVipHost(String host) {
-    final vipFlags = _globalConfig['vipFlag'] as List<dynamic>?;
-    if (vipFlags == null) return false;
-    
-    for (final flag in vipFlags) {
-      if (host.contains(flag.toString())) {
-        return true;
-      }
-    }
-    return false;
-  }
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'type': type,
+        'url': url,
+        'epg': epg,
+      };
 }

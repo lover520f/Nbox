@@ -35,7 +35,7 @@ class VideoCard extends StatelessWidget {
           boxShadow: isFocus
               ? [
                   BoxShadow(
-                    color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
+                    color: Theme.of(context).primaryColor.withOpacity(0.3),
                     blurRadius: 10,
                     spreadRadius: 2,
                   )
@@ -86,7 +86,7 @@ class VideoCard extends StatelessWidget {
             colors: [
               Colors.transparent,
               Colors.transparent,
-              Colors.black.withValues(alpha: 0.7),
+              Colors.black.withOpacity(0.7),
             ],
             stops: const [0.0, 0.5, 1.0],
           ),
@@ -120,7 +120,7 @@ class VideoCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.7),
+          color: Colors.black.withOpacity(0.7),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(

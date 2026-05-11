@@ -1,5 +1,5 @@
 name: nbox
-version: 1.0.1
+version: 1.0.0
 description: Nbox - 牛盒 - 全平台影视播放器，基于 CatVod 架构
 
 publish_to: 'none'
@@ -12,8 +12,8 @@ dependencies:
     sdk: flutter
   provider: ^6.1.1
   dio: ^5.4.0
-  video_player: ^2.8.2
-  chewie: ^1.7.4
+  video_player: ^2.8.3
+  chewie: ^1.8.5
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path_provider: ^2.1.2
@@ -29,7 +29,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/
-    - assets/config/
-    - assets/spider/

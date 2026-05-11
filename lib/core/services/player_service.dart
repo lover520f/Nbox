@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:video_player/video_player.dart';
@@ -8,16 +7,16 @@ import 'package:flutter/material.dart';
 class PlayerService extends ChangeNotifier {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
-  
+
   bool _isInitialized = false;
   bool _isPlaying = false;
   bool _isBuffering = false;
   bool _isFullScreen = false;
-  
+
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   Duration _buffered = Duration.zero;
-  
+
   String? _currentUrl;
   String? _currentTitle;
   String? _error;
@@ -32,7 +31,7 @@ class PlayerService extends ChangeNotifier {
   String? get currentUrl => _currentUrl;
   String? get currentTitle => _currentTitle;
   String? get error => _error;
-  
+
   VideoPlayerController? get videoController => _videoController;
   ChewieController? get chewieController => _chewieController;
 
@@ -49,26 +48,18 @@ class PlayerService extends ChangeNotifier {
       _currentTitle = title;
       notifyListeners();
 
-      await dispose();
+      _disposeControllers();
 
       if (url.startsWith('http')) {
         _videoController = VideoPlayerController.networkUrl(
           Uri.parse(url),
-          videoPlayerOptions: VideoPlayerOptions(
-            mixWithOthers: true,
-            allowBackgroundPlayback: true,
-          ),
         );
       } else {
         _videoController = VideoPlayerController.file(File(url));
       }
 
-      if (headers != null && headers.isNotEmpty) {
-        await _videoController!.setNetworkHeaders(headers);
-      }
-
       await _videoController!.initialize();
-      
+
       _chewieController = ChewieController(
         videoPlayerController: _videoController!,
         autoPlay: autoPlay,
@@ -98,7 +89,7 @@ class PlayerService extends ChangeNotifier {
       );
 
       _videoController!.addListener(_onVideoUpdate);
-      
+
       _isInitialized = true;
       _isPlaying = autoPlay;
       _duration = _videoController!.value.duration;
@@ -112,17 +103,17 @@ class PlayerService extends ChangeNotifier {
 
   void _onVideoUpdate() {
     if (_videoController == null) return;
-    
+
     final value = _videoController!.value;
     _position = value.position;
     _duration = value.duration;
     _isPlaying = value.isPlaying;
     _isBuffering = value.isBuffering;
-    
+
     if (value.hasError) {
       _error = value.errorDescription;
     }
-    
+
     notifyListeners();
   }
 
@@ -183,23 +174,29 @@ class PlayerService extends ChangeNotifier {
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
     final seconds = duration.inSeconds.remainder(60);
-    
+
     if (hours > 0) {
       return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     }
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
-  @override
-  Future<void> dispose() async {
-    _videoController?.removeListener(_onVideoUpdate);
-    await _chewieController?.dispose();
-    await _videoController?.dispose();
+  void _disposeControllers() {
+    if (_videoController != null) {
+      _videoController!.removeListener(_onVideoUpdate);
+    }
+    _chewieController?.dispose();
     _chewieController = null;
+    _videoController?.dispose();
     _videoController = null;
     _isInitialized = false;
     _isPlaying = false;
     _currentUrl = null;
+  }
+
+  @override
+  void dispose() {
+    _disposeControllers();
     super.dispose();
   }
 }

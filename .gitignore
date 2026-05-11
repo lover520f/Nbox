@@ -38,6 +38,11 @@ pubspec.lock
 **/ios/Pods/
 **/ios/.symlinks/
 
+# Windows/macOS/Linux ephemeral
+**/windows/flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+**/linux/flutter/ephemeral/
+
 # Symbolication related
 app.*.symbols
 

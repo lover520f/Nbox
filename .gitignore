@@ -31,6 +31,12 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+pubspec.lock
+
+# iOS related
+**/ios/Flutter/
+**/ios/Pods/
+**/ios/.symlinks/
 
 # Symbolication related
 app.*.symbols

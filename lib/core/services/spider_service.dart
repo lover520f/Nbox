@@ -41,13 +41,27 @@ function req(url, options) {
     }
   }
   xhr.send(body);
+  var resHeaders = {};
+  try {
+    var allHeaders = xhr.getAllResponseHeaders();
+    if (allHeaders) {
+      allHeaders.split('\\r\\n').forEach(function(line) {
+        var parts = line.split(': ');
+        if (parts.length >= 2) resHeaders[parts[0].toLowerCase()] = parts.slice(1).join(': ');
+      });
+    }
+  } catch(e) {}
   if (responseType === 'buffer' || responseType === 'arraybuffer') {
-    return new Uint8Array(xhr.response);
+    return { ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, url: url, content: new Uint8Array(xhr.response), headers: resHeaders };
   }
   if (responseType === 'json') {
-    try { return JSON.parse(xhr.responseText); } catch(e) { return null; }
+    try {
+      return { ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, url: url, content: JSON.parse(xhr.responseText), headers: resHeaders };
+    } catch(e) {
+      return { ok: false, status: xhr.status, url: url, content: null, headers: resHeaders };
+    }
   }
-  return xhr.responseText;
+  return { ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, url: url, content: xhr.responseText, headers: resHeaders };
 }
 ''';
 
@@ -59,6 +73,11 @@ function local(key, value) {
   }
   __local_store[key] = value;
 }
+var console = console || {};
+console.log = console.log || function() {};
+console.error = console.error || function() {};
+console.warn = console.warn || function() {};
+console.info = console.info || function() {};
 ''';
 
   Future<void> loadSource(VideoSource source) async {
@@ -130,6 +149,22 @@ function local(key, value) {
             await controller.evaluateJavascript(source: _reqPolyfill);
             await controller.evaluateJavascript(source: _localPolyfill);
             await controller.evaluateJavascript(source: jsCode!);
+
+            await controller.evaluateJavascript(source: '''
+if (typeof __jsEvalReturn === 'function') {
+  var __spiderObj = __jsEvalReturn();
+  if (__spiderObj) {
+    if (typeof __spiderObj.init === 'function') window.init = __spiderObj.init;
+    if (typeof __spiderObj.home === 'function') window.home = __spiderObj.home;
+    if (typeof __spiderObj.homeVod === 'function') window.homeVod = __spiderObj.homeVod;
+    if (typeof __spiderObj.category === 'function') window.category = __spiderObj.category;
+    if (typeof __spiderObj.detail === 'function') window.detail = __spiderObj.detail;
+    if (typeof __spiderObj.play === 'function') window.play = __spiderObj.play;
+    if (typeof __spiderObj.search === 'function') window.search = __spiderObj.search;
+    if (typeof __spiderObj.destroy === 'function') window.destroy = __spiderObj.destroy;
+  }
+}
+''');
 
             final initCfg = jsonEncode({
               'skey': source.key ?? '',
@@ -324,7 +359,7 @@ function local(key, value) {
       final extendJson = extend != null ? jsonEncode(extend) : '{}';
       final escapedTid = tid.replaceAll("'", "\\'");
       final result = await _evaluateSpider(
-          "category('$escapedTid', $page, true, $extendJson)");
+          "category('$escapedTid', '$page', true, $extendJson)");
       if (result.isEmpty) {
         return {'page': page, 'pagecount': 1, 'list': [], 'count': 0};
       }
@@ -337,8 +372,8 @@ function local(key, value) {
 
   Future<Map<String, dynamic>> _jsSpiderDetail(List<String> ids) async {
     try {
-      final idsStr = ids.join(',').replaceAll("'", "\\'");
-      final result = await _evaluateSpider("detail('$idsStr')");
+      final escapedId = ids.isNotEmpty ? ids.first.replaceAll("'", "\\'") : '';
+      final result = await _evaluateSpider("detail('$escapedId')");
       if (result.isEmpty) return {'list': []};
       return result;
     } catch (e) {

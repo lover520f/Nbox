@@ -5,7 +5,7 @@ description: Nbox - 牛盒 - 全平台影视播放器，基于 CatVod 架构
 publish_to: 'none'
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.5.0 <4.0.0'
 
 dependencies:
   flutter:

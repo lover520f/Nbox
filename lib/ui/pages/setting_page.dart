@@ -97,7 +97,7 @@ class SettingPage extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.add_link),
               title: const Text('添加单源'),
-              subtitle: const Text('添加单个数据源地址'),
+              subtitle: const Text('添加JSON API源或JS猫源'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showAddSourceDialog(context),
             ),
@@ -197,7 +197,7 @@ class SettingPage extends StatelessWidget {
         ListTile(
           leading: const Icon(Icons.info_outline),
           title: const Text('版本'),
-          subtitle: const Text('1.2.0'),
+          subtitle: const Text('2.2.0'),
         ),
         ListTile(
           leading: const Icon(Icons.code),
@@ -226,7 +226,7 @@ class SettingPage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              '配置地址将自动保存，下次启动时加载',
+              '支持TVBox标准JSON配置格式，自动解析源列表',
               style: TextStyle(color: Colors.white54, fontSize: 12),
             ),
           ],
@@ -242,7 +242,12 @@ class SettingPage extends StatelessWidget {
                 await StorageService.saveString('config_url', controller.text);
                 final configService = context.read<ConfigService>();
                 await configService.loadConfig(controller.text);
-                if (context.mounted) Navigator.pop(context);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('已加载 ${configService.sources.length} 个源')),
+                  );
+                }
               }
             },
             child: const Text('加载'),
@@ -255,54 +260,88 @@ class SettingPage extends StatelessWidget {
   void _showAddSourceDialog(BuildContext context) {
     final nameController = TextEditingController();
     final apiController = TextEditingController();
+    int selectedType = 1;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('添加数据源'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                hintText: '数据源名称',
-                labelText: '名称',
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('添加数据源'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      hintText: '数据源名称',
+                      labelText: '名称',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    value: selectedType,
+                    decoration: const InputDecoration(
+                      labelText: '源类型',
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 0, child: Text('XML源 (type 0)')),
+                      DropdownMenuItem(value: 1, child: Text('JSON源 (type 1)')),
+                      DropdownMenuItem(value: 3, child: Text('JS猫源 (type 3)')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() => selectedType = value);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: apiController,
+                    decoration: InputDecoration(
+                      hintText: selectedType == 3
+                          ? 'https://example.com/spider.js.md5'
+                          : 'https://example.com/api.php/provide/vod/',
+                      labelText: selectedType == 3 ? 'JS源地址' : 'API地址',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    selectedType == 3
+                        ? 'JS猫源地址支持 .js 和 .js.md5 格式，将自动下载并执行JS代码'
+                        : 'JSON/XML源地址为CatVod标准API接口地址',
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: apiController,
-              decoration: const InputDecoration(
-                hintText: 'https://example.com/api.php/provide/vod/',
-                labelText: 'API地址',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (apiController.text.isNotEmpty) {
-                final source = VideoSource(
-                  key: apiController.text,
-                  name: nameController.text.isEmpty ? '自定义源' : nameController.text,
-                  api: apiController.text,
-                  type: 1,
-                );
-                final configService = context.read<ConfigService>();
-                configService.addSource(source);
-                configService.setActiveSource(source);
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('添加'),
-          ),
-        ],
-      ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('取消'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (apiController.text.isNotEmpty) {
+                      final source = VideoSource(
+                        key: apiController.text,
+                        name: nameController.text.isEmpty ? '自定义源' : nameController.text,
+                        api: apiController.text,
+                        type: selectedType,
+                        spider: selectedType == 3 ? apiController.text : null,
+                      );
+                      final configService = context.read<ConfigService>();
+                      configService.addSource(source);
+                      configService.setActiveSource(source);
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: const Text('添加'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -323,13 +362,14 @@ class SettingPage extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final source = configService.sources[index];
                       final isActive = source.key == configService.activeSource?.key;
+                      final typeLabel = source.type == 3 ? 'JS' : (source.type == 0 ? 'XML' : 'JSON');
                       return ListTile(
                         leading: Icon(
                           isActive ? Icons.radio_button_checked : Icons.radio_button_off,
                           color: isActive ? Theme.of(context).primaryColor : null,
                         ),
                         title: Text(source.name ?? '未知'),
-                        subtitle: Text(source.api ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text('[$typeLabel] ${source.api ?? source.spider ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete_outline, size: 20),
                           onPressed: () {

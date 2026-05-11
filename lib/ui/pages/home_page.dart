@@ -21,11 +21,36 @@ class _HomePageState extends State<HomePage> {
   bool _isLoading = true;
   String? _error;
   String? _selectedCategoryId;
+  VideoSource? _lastActiveSource;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final configService = context.read<ConfigService>();
+      _lastActiveSource = configService.activeSource;
+      configService.addListener(_onConfigChanged);
+      _loadData();
+    });
+  }
+
+  void _onConfigChanged() {
+    if (!mounted) return;
+    final configService = context.read<ConfigService>();
+    if (configService.activeSource != _lastActiveSource) {
+      _lastActiveSource = configService.activeSource;
+      _selectedCategoryId = null;
+      _loadData();
+    }
+  }
+
+  @override
+  void dispose() {
+    try {
+      final configService = context.read<ConfigService>();
+      configService.removeListener(_onConfigChanged);
+    } catch (_) {}
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -38,6 +63,9 @@ class _HomePageState extends State<HomePage> {
       }
       final homeData = await spiderService.homeContent();
       if (!mounted) return;
+      debugPrint('HomePage: homeData keys = ${homeData.keys.toList()}');
+      debugPrint('HomePage: class count = ${(homeData['class'] as List?)?.length ?? 0}');
+      debugPrint('HomePage: list count = ${(homeData['list'] as List?)?.length ?? 0}');
       setState(() {
         _categories = (homeData['class'] as List?)
             ?.map((e) => Category.fromJson(e as Map<String, dynamic>))
@@ -47,7 +75,9 @@ class _HomePageState extends State<HomePage> {
             .toList() ?? [];
         _isLoading = false;
       });
+      debugPrint('HomePage: loaded ${_videos.length} videos, ${_categories.length} categories');
     } catch (e) {
+      debugPrint('HomePage: _loadData error: $e');
       if (!mounted) return;
       setState(() { _error = e.toString(); _isLoading = false; });
     }
@@ -124,19 +154,24 @@ class _HomePageState extends State<HomePage> {
       const SizedBox(height: 16),
       ElevatedButton(onPressed: _loadData, child: const Text('重试')),
     ]));
-    if (_videos.isEmpty) return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Icon(Icons.movie_filter, size: 64, color: Colors.grey),
-      SizedBox(height: 16),
-      Text('暂无内容'),
-      SizedBox(height: 8),
-      Text('请在设置中添加数据源', style: TextStyle(color: Colors.white54)),
+    if (_videos.isEmpty) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      const Icon(Icons.movie_filter, size: 64, color: Colors.grey),
+      const SizedBox(height: 16),
+      const Text('暂无内容'),
+      const SizedBox(height: 8),
+      const Text('请在设置中添加数据源', style: TextStyle(color: Colors.white54)),
+      const SizedBox(height: 16),
+      ElevatedButton(onPressed: _loadData, child: const Text('刷新')),
     ]));
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 250, childAspectRatio: 0.65, crossAxisSpacing: 16, mainAxisSpacing: 16),
-      itemCount: _videos.length,
-      itemBuilder: (context, index) => VideoCard(video: _videos[index]),
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 250, childAspectRatio: 0.65, crossAxisSpacing: 16, mainAxisSpacing: 16),
+        itemCount: _videos.length,
+        itemBuilder: (context, index) => VideoCard(video: _videos[index]),
+      ),
     );
   }
 }

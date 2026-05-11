@@ -101,21 +101,38 @@ class ConfigService extends ChangeNotifier {
   }
 
   void _parseConfig(Map<String, dynamic> config) {
+    String? globalSpider;
+    if (config['spider'] is String && (config['spider'] as String).isNotEmpty) {
+      globalSpider = config['spider'] as String;
+      if (globalSpider.contains(';')) {
+        globalSpider = globalSpider.split(';').first;
+      }
+    }
+
     if (config['sites'] is List) {
       _sources = (config['sites'] as List).map((e) {
         final map = e as Map<String, dynamic>;
+        String? spiderUrl = map['spider']?.toString() ?? map['jar']?.toString();
+        if (spiderUrl == null || spiderUrl.isEmpty) {
+          spiderUrl = globalSpider;
+        }
+        String? ext = map['ext']?.toString();
+        if (ext == null && map['extra'] != null) {
+          ext = map['extra'].toString();
+        }
         return VideoSource(
           key: map['key']?.toString(),
           name: map['name']?.toString(),
           api: map['api']?.toString(),
           type: map['type'] as int?,
-          spider: map['spider']?.toString() ?? map['jar']?.toString(),
+          spider: spiderUrl,
           searchable: map['searchable'] as int? ?? 1,
           changeable: map['changeable'] as int? ?? 1,
           quicksearch: map['quicksearch'] as int? ?? 1,
           filter: map['filter'] as int? ?? 1,
           filterable: map['filterable'] as int?,
           enabled: 1,
+          ext: ext,
         );
       }).toList();
     } else if (config['spider'] is List) {
@@ -143,10 +160,16 @@ class ConfigService extends ChangeNotifier {
     if (_sources.isNotEmpty) {
       _activeSource ??= _sources.first;
     }
+
+    debugPrint('ConfigService: parsed ${_sources.length} sources, ${_liveGroups.length} live groups');
+    for (final s in _sources) {
+      debugPrint('ConfigService: source ${s.name} type=${s.type} api=${s.api} spider=${s.spider}');
+    }
   }
 
   void setActiveSource(VideoSource source) {
     _activeSource = source;
+    debugPrint('ConfigService: active source changed to ${source.name}');
     notifyListeners();
   }
 

@@ -1,5 +1,5 @@
 name: nbox
-version: 1.0.0
+version: 2.2.0
 description: Nbox - 牛盒 - 全平台影视播放器，基于 CatVod 架构
 
 publish_to: 'none'
@@ -18,7 +18,7 @@ dependencies:
   hive_flutter: ^1.1.0
   path_provider: ^2.1.2
   cached_network_image: ^3.3.1
-  flutter_js: ^0.8.7
+  flutter_inappwebview: ^6.0.0
   window_manager: ^0.3.8
 
 dev_dependencies:

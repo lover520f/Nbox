@@ -12,7 +12,7 @@ import 'core/services/player_service.dart';
 import 'core/services/proxy_service.dart';
 import 'core/models/video_source.dart';
 
-const String appVersion = '1.2.0';
+const String appVersion = '2.2.0';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

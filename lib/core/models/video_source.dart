@@ -37,6 +37,9 @@ class VideoSource extends HiveObject {
   @HiveField(10)
   int? filterable;
 
+  @HiveField(11)
+  String? ext;
+
   VideoSource({
     this.key,
     this.name,
@@ -49,6 +52,7 @@ class VideoSource extends HiveObject {
     this.filter = 1,
     this.enabled = 1,
     this.filterable,
+    this.ext,
   });
 
   factory VideoSource.fromJson(Map<String, dynamic> json) {
@@ -64,7 +68,8 @@ class VideoSource extends HiveObject {
       filter: json['filter'] as int? ?? 1,
       enabled: json['enabled'] as int? ?? 1,
       filterable: json['filterable'] as int?,
-    );
+      ext: json['ext'] as String?,
+    });
   }
 
   Map<String, dynamic> toJson() => {
@@ -79,6 +84,7 @@ class VideoSource extends HiveObject {
         'filter': filter,
         'enabled': enabled,
         'filterable': filterable,
+        'ext': ext,
       };
 
   bool get isEnabled => enabled == 1;

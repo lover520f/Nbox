@@ -1,10 +1,10 @@
 {
   "sites": [
     {
-      "key": "csp_AppTT",
-      "name": "图图影视",
-      "type": 3,
-      "api": "https://freed.yuanhsing.cf/TV",
+      "key": "csp_AppYs",
+      "name": "优视影视",
+      "type": 1,
+      "api": "https://api.appys.tv/api.php/provide/vod/",
       "searchable": 1,
       "quicksearch": 1,
       "filterable": 1
@@ -12,11 +12,9 @@
   ],
   "lives": [
     {
-      "name": "直播",
+      "name": "央视直播",
       "type": 0,
-      "url": "https://ghp.ci/https://raw.githubusercontent.com/qingwen02/TVBoxLive/main/live.txt",
-      "epg": "https://epg.112114.xyz/?ch={name}&date={date}"
+      "url": "https://raw.githubusercontent.com/YueChan/Live/main/IPTV.m3u"
     }
-  ],
-  "wallpaper": "https://bing.img.run/uhd.php"
+  ]
 }

@@ -24,13 +24,14 @@ class VideoSourceAdapter extends TypeAdapter<VideoSource> {
       filter: fields[8] as int?,
       enabled: fields[9] as int?,
       filterable: fields[10] as int?,
+      ext: fields[11] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, VideoSource obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.key)
       ..writeByte(1)
@@ -52,7 +53,9 @@ class VideoSourceAdapter extends TypeAdapter<VideoSource> {
       ..writeByte(9)
       ..write(obj.enabled)
       ..writeByte(10)
-      ..write(obj.filterable);
+      ..write(obj.filterable)
+      ..writeByte(11)
+      ..write(obj.ext);
   }
 
   @override

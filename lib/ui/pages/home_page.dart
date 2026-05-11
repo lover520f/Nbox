@@ -59,7 +59,9 @@ class _HomePageState extends State<HomePage> {
       final spiderService = context.read<SpiderService>();
       final configService = context.read<ConfigService>();
       if (configService.activeSource != null) {
-        await spiderService.loadSource(configService.activeSource!);
+        if (spiderService.currentSource != configService.activeSource) {
+          await spiderService.loadSource(configService.activeSource!);
+        }
       }
       final homeData = await spiderService.homeContent();
       if (!mounted) return;

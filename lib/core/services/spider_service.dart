@@ -174,9 +174,30 @@ function local(key, value) {
     if (controller == null) {
       throw Exception('WebView controller is null');
     }
-    final result = await controller.evaluateJavascript(
-        source: 'try { var __r = $jsExpression; __r === undefined || __r === null ? "null" : JSON.stringify(__r) } catch(e) { JSON.stringify({__error: e.message}) }');
-    final jsonStr = result?.toString() ?? '';
+    final jsWrapper = '''try {
+  var __r = $jsExpression;
+  if (__r === undefined || __r === null) { "null" }
+  else if (typeof __r === "string") { __r }
+  else { JSON.stringify(__r) }
+} catch(e) { JSON.stringify({__error: e.message}) }''';
+    final result = await controller.evaluateJavascript(source: jsWrapper);
+    if (result == null) return {};
+    if (result is Map<String, dynamic>) {
+      if (result.containsKey('__error')) {
+        debugPrint('SpiderService: JS error: ${result['__error']}');
+        return {};
+      }
+      return result;
+    }
+    if (result is Map) {
+      final map = Map<String, dynamic>.from(result);
+      if (map.containsKey('__error')) {
+        debugPrint('SpiderService: JS error: ${map['__error']}');
+        return {};
+      }
+      return map;
+    }
+    final jsonStr = result.toString();
     if (jsonStr.isEmpty || jsonStr == 'undefined' || jsonStr == 'null') {
       return {};
     }
@@ -189,9 +210,12 @@ function local(key, value) {
         }
         return parsed;
       }
+      if (parsed is Map) {
+        return Map<String, dynamic>.from(parsed);
+      }
       return {};
     } catch (e) {
-      debugPrint('SpiderService: JSON decode error: $e');
+      debugPrint('SpiderService: JSON decode error: $e, raw: ${jsonStr.substring(0, jsonStr.length > 200 ? 200 : jsonStr.length)}');
       return {};
     }
   }
@@ -349,8 +373,13 @@ function local(key, value) {
   }
 
   Future<Map<String, dynamic>> _apiHome(VideoSource source) async {
-    final url = _buildApiUrl(source.api, {'ac': 'home'});
-    return await _fetchJson(url);
+    final homeUrl = _buildApiUrl(source.api, {'ac': 'home'});
+    var data = await _fetchJson(homeUrl);
+    if (data.isEmpty || (!data.containsKey('class') && !data.containsKey('list'))) {
+      final listUrl = _buildApiUrl(source.api, {'ac': 'list'});
+      data = await _fetchJson(listUrl);
+    }
+    return data;
   }
 
   Future<Map<String, dynamic>> _apiCategory(VideoSource source, String tid,

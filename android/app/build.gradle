@@ -24,7 +24,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.nbox.app"
-    compileSdk flutter.compileSdkVersion
+    compileSdk 34
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -43,7 +43,7 @@ android {
     defaultConfig {
         applicationId "com.nbox.app"
         minSdk 21
-        targetSdk flutter.targetSdkVersion
+        targetSdk 34
         versionCode flutter.versionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true

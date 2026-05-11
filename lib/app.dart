@@ -9,7 +9,6 @@ import 'ui/pages/live_page.dart';
 import 'ui/pages/favorite_page.dart';
 import 'ui/pages/setting_page.dart';
 import 'ui/theme/app_theme.dart';
-import 'ui/widgets/source_selector.dart';
 
 class NboxApp extends StatelessWidget {
   const NboxApp({super.key});
@@ -23,6 +22,9 @@ class NboxApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.dark,
       home: const MainPage(),
+      routes: {
+        '/favorites': (context) => const FavoritePage(),
+      },
     );
   }
 }
@@ -40,14 +42,12 @@ class _MainPageState extends State<MainPage> {
   final List<Widget> _pages = const [
     HomePage(),
     LivePage(),
-    FavoritePage(),
     SettingPage(),
   ];
 
   static const List<_NavItem> _navItems = [
     _NavItem(icon: Icons.home_outlined, selectedIcon: Icons.home, label: '首页'),
     _NavItem(icon: Icons.live_tv_outlined, selectedIcon: Icons.live_tv, label: '直播'),
-    _NavItem(icon: Icons.favorite_outline, selectedIcon: Icons.favorite, label: '收藏'),
     _NavItem(icon: Icons.settings_outlined, selectedIcon: Icons.settings, label: '设置'),
   ];
 
@@ -75,6 +75,10 @@ class _MainPageState extends State<MainPage> {
       } catch (e) {
         debugPrint('MainPage: loadConfigFromFile failed: $e');
       }
+    }
+    final liveUrl = StorageService.getString('live_url');
+    if (liveUrl != null && liveUrl.isNotEmpty) {
+      configService.updateLiveUrl(liveUrl);
     }
   }
 
@@ -121,7 +125,6 @@ class _MainPageState extends State<MainPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('牛盒'),
-        actions: const [SourceSelector()],
       ),
       body: Column(
         children: [

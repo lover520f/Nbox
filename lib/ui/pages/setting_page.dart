@@ -19,9 +19,17 @@ class SettingPage extends StatelessWidget {
         children: [
           _buildSection(
             context,
-            title: '数据源',
+            title: '接口管理',
             children: [
-              _buildSourceConfig(context),
+              _buildInterfaceList(context),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildSection(
+            context,
+            title: '直播接口',
+            children: [
+              _buildLiveConfig(context),
             ],
           ),
           const SizedBox(height: 16),
@@ -82,31 +90,105 @@ class SettingPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSourceConfig(BuildContext context) {
+  Widget _buildInterfaceList(BuildContext context) {
+    return Consumer<ConfigService>(
+      builder: (context, configService, child) {
+        final sources = configService.sources;
+        return Column(
+          children: [
+            if (sources.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    Icon(Icons.cloud_off, size: 48, color: Colors.grey),
+                    SizedBox(height: 12),
+                    Text('暂无接口', style: TextStyle(color: Colors.white54)),
+                    SizedBox(height: 4),
+                    Text('点击下方按钮添加接口配置', style: TextStyle(color: Colors.white38, fontSize: 12)),
+                  ],
+                ),
+              )
+            else
+              ...sources.map((source) {
+                final isActive = source.key == configService.activeSource?.key;
+                return ListTile(
+                  leading: Icon(
+                    isActive ? Icons.check_circle : Icons.radio_button_off,
+                    color: isActive ? Theme.of(context).primaryColor : Colors.grey,
+                  ),
+                  title: Row(
+                    children: [
+                      Expanded(child: Text(source.name ?? '未命名', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text('JS猫源', style: TextStyle(fontSize: 10, color: Colors.blue)),
+                      ),
+                    ],
+                  ),
+                  subtitle: Text(
+                    source.api ?? source.spider ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                    onPressed: () {
+                      configService.removeSource(source);
+                    },
+                  ),
+                  selected: isActive,
+                  onTap: () {
+                    configService.setActiveSource(source);
+                  },
+                );
+              }),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.add_circle_outline, color: Colors.green),
+              title: const Text('添加接口配置'),
+              subtitle: const Text('配置网址 / 本地包 / 单个猫源'),
+              onTap: () => _showAddInterfaceDialog(context),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildLiveConfig(BuildContext context) {
+    final liveUrl = StorageService.getString('live_url') ?? '';
     return Consumer<ConfigService>(
       builder: (context, configService, child) {
         return Column(
           children: [
-            ListTile(
-              leading: const Icon(Icons.link),
-              title: const Text('配置地址'),
-              subtitle: Text(StorageService.getString('config_url') ?? '未设置'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _showConfigUrlDialog(context),
-            ),
+            if (configService.liveGroups.isNotEmpty)
+              ...configService.liveGroups.map((group) => ListTile(
+                leading: const Icon(Icons.live_tv, size: 20),
+                title: Text(group.name),
+                subtitle: Text(group.url ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
+                trailing: const Icon(Icons.check_circle, size: 16, color: Colors.green),
+              ))
+            else
+              ListTile(
+                leading: const Icon(Icons.live_tv),
+                title: const Text('直播接口'),
+                subtitle: Text(liveUrl.isEmpty ? '未设置' : liveUrl, maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showLiveUrlDialog(context),
+              ),
+            const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.add_link),
-              title: const Text('添加单源'),
-              subtitle: const Text('添加JSON API源或JS猫源'),
+              title: const Text('设置直播地址'),
+              subtitle: const Text('M3U/TXT直播源地址'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => _showAddSourceDialog(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.source),
-              title: const Text('数据源列表'),
-              subtitle: Text('${configService.sources.length} 个源'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _showSourceListDialog(context),
+              onTap: () => _showLiveUrlDialog(context),
             ),
           ],
         );
@@ -197,7 +279,7 @@ class SettingPage extends StatelessWidget {
         ListTile(
           leading: const Icon(Icons.info_outline),
           title: const Text('版本'),
-          subtitle: const Text('2.2.0'),
+          subtitle: const Text('3.0.0'),
         ),
         ListTile(
           leading: const Icon(Icons.code),
@@ -208,12 +290,79 @@ class SettingPage extends StatelessWidget {
     );
   }
 
+  void _showAddInterfaceDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          left: 16, right: 16, top: 16,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[600],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text('添加接口', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.link, color: Colors.blue),
+              title: const Text('配置网址'),
+              subtitle: const Text('输入TVBox标准配置JSON地址'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              onTap: () {
+                Navigator.pop(context);
+                _showConfigUrlDialog(context);
+              },
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.folder_open, color: Colors.orange),
+              title: const Text('本地包'),
+              subtitle: const Text('从本地文件选择配置'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              onTap: () {
+                Navigator.pop(context);
+                _showLocalFileDialog(context);
+              },
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.code, color: Colors.green),
+              title: const Text('单个猫源'),
+              subtitle: const Text('添加.js.md5猫源地址'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              onTap: () {
+                Navigator.pop(context);
+                _showAddSingleSourceDialog(context);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showConfigUrlDialog(BuildContext context) {
     final controller = TextEditingController(text: StorageService.getString('config_url') ?? '');
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('输入配置地址'),
+        title: const Text('配置网址'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -221,12 +370,13 @@ class SettingPage extends StatelessWidget {
               controller: controller,
               decoration: const InputDecoration(
                 hintText: 'https://example.com/config.json',
-                labelText: '配置URL',
+                labelText: '配置网址',
+                prefixIcon: Icon(Icons.link),
               ),
             ),
             const SizedBox(height: 8),
             const Text(
-              '支持TVBox标准JSON配置格式，自动解析源列表',
+              '支持TVBox标准JSON配置格式，自动解析猫源列表',
               style: TextStyle(color: Colors.white54, fontSize: 12),
             ),
           ],
@@ -245,7 +395,7 @@ class SettingPage extends StatelessWidget {
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('已加载 ${configService.sources.length} 个源')),
+                    SnackBar(content: Text('已加载 ${configService.sources.length} 个接口')),
                   );
                 }
               }
@@ -257,135 +407,173 @@ class SettingPage extends StatelessWidget {
     );
   }
 
-  void _showAddSourceDialog(BuildContext context) {
+  void _showLocalFileDialog(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('本地包'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintText: '/sdcard/config.json',
+                labelText: '本地文件路径',
+                prefixIcon: Icon(Icons.folder_open),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '输入设备上的配置文件完整路径',
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (controller.text.isNotEmpty) {
+                final configService = context.read<ConfigService>();
+                await configService.loadConfigFromFile(controller.text);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('已加载 ${configService.sources.length} 个接口')),
+                  );
+                }
+              }
+            },
+            child: const Text('加载'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddSingleSourceDialog(BuildContext context) {
     final nameController = TextEditingController();
     final apiController = TextEditingController();
-    int selectedType = 1;
+    final extController = TextEditingController();
     showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('添加数据源'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(
-                      hintText: '数据源名称',
-                      labelText: '名称',
-                    ),
+        return AlertDialog(
+          title: const Text('添加猫源'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    hintText: '接口名称',
+                    labelText: '名称',
+                    prefixIcon: Icon(Icons.label),
                   ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<int>(
-                    value: selectedType,
-                    decoration: const InputDecoration(
-                      labelText: '源类型',
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 0, child: Text('XML源 (type 0)')),
-                      DropdownMenuItem(value: 1, child: Text('JSON源 (type 1)')),
-                      DropdownMenuItem(value: 3, child: Text('JS猫源 (type 3)')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setDialogState(() => selectedType = value);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: apiController,
-                    decoration: InputDecoration(
-                      hintText: selectedType == 3
-                          ? 'https://example.com/spider.js.md5'
-                          : 'https://example.com/api.php/provide/vod/',
-                      labelText: selectedType == 3 ? 'JS源地址' : 'API地址',
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    selectedType == 3
-                        ? 'JS猫源地址支持 .js 和 .js.md5 格式，将自动下载并执行JS代码'
-                        : 'JSON/XML源地址为CatVod标准API接口地址',
-                    style: const TextStyle(color: Colors.white54, fontSize: 12),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('取消'),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (apiController.text.isNotEmpty) {
-                      final source = VideoSource(
-                        key: apiController.text,
-                        name: nameController.text.isEmpty ? '自定义源' : nameController.text,
-                        api: apiController.text,
-                        type: selectedType,
-                        spider: selectedType == 3 ? apiController.text : null,
-                      );
-                      final configService = context.read<ConfigService>();
-                      configService.addSource(source);
-                      configService.setActiveSource(source);
-                      Navigator.pop(context);
-                    }
-                  },
-                  child: const Text('添加'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: apiController,
+                  decoration: const InputDecoration(
+                    hintText: 'https://example.com/spider.js.md5',
+                    labelText: '猫源地址',
+                    prefixIcon: Icon(Icons.code),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: extController,
+                  decoration: const InputDecoration(
+                    hintText: '扩展参数(可选)',
+                    labelText: 'ext',
+                    prefixIcon: Icon(Icons.extension),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '支持 .js 和 .js.md5 格式猫源地址',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
               ],
-            );
-          },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (apiController.text.isNotEmpty) {
+                  final source = VideoSource(
+                    key: 'csp_${DateTime.now().millisecondsSinceEpoch}',
+                    name: nameController.text.isEmpty ? '自定义猫源' : nameController.text,
+                    api: apiController.text,
+                    type: 3,
+                    spider: apiController.text,
+                    ext: extController.text.isEmpty ? null : extController.text,
+                  );
+                  final configService = context.read<ConfigService>();
+                  configService.addSource(source);
+                  configService.setActiveSource(source);
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('添加'),
+            ),
+          ],
         );
       },
     );
   }
 
-  void _showSourceListDialog(BuildContext context) {
+  void _showLiveUrlDialog(BuildContext context) {
+    final controller = TextEditingController(text: StorageService.getString('live_url') ?? '');
     showDialog(
       context: context,
-      builder: (context) => Consumer<ConfigService>(
-        builder: (context, configService, child) {
-          return AlertDialog(
-            title: const Text('选择数据源'),
-            content: SizedBox(
-              width: 300,
-              height: 400,
-              child: configService.sources.isEmpty
-                ? const Center(child: Text('暂无数据源'))
-                : ListView.builder(
-                    itemCount: configService.sources.length,
-                    itemBuilder: (context, index) {
-                      final source = configService.sources[index];
-                      final isActive = source.key == configService.activeSource?.key;
-                      final typeLabel = source.type == 3 ? 'JS' : (source.type == 0 ? 'XML' : 'JSON');
-                      return ListTile(
-                        leading: Icon(
-                          isActive ? Icons.radio_button_checked : Icons.radio_button_off,
-                          color: isActive ? Theme.of(context).primaryColor : null,
-                        ),
-                        title: Text(source.name ?? '未知'),
-                        subtitle: Text('[$typeLabel] ${source.api ?? source.spider ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, size: 20),
-                          onPressed: () {
-                            configService.removeSource(source);
-                          },
-                        ),
-                        onTap: () {
-                          configService.setActiveSource(source);
-                          Navigator.pop(context);
-                        },
-                      );
-                    },
-                  ),
+      builder: (context) => AlertDialog(
+        title: const Text('直播接口'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintText: 'https://example.com/iptv.m3u',
+                labelText: '直播源地址',
+                prefixIcon: Icon(Icons.live_tv),
+              ),
             ),
-          );
-        },
+            const SizedBox(height: 8),
+            const Text(
+              '支持M3U/TXT格式直播源',
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await StorageService.saveString('live_url', controller.text);
+              if (context.mounted) {
+                final configService = context.read<ConfigService>();
+                configService.updateLiveUrl(controller.text);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('保存'),
+          ),
+        ],
       ),
     );
   }

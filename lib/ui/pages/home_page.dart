@@ -4,7 +4,6 @@ import '../../core/services/config_service.dart';
 import '../../core/services/spider_service.dart';
 import '../../core/models/video_source.dart';
 import '../widgets/video_card.dart';
-import '../widgets/source_selector.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/category_tabs.dart';
 
@@ -65,9 +64,6 @@ class _HomePageState extends State<HomePage> {
       }
       final homeData = await spiderService.homeContent();
       if (!mounted) return;
-      debugPrint('HomePage: homeData keys = ${homeData.keys.toList()}');
-      debugPrint('HomePage: class count = ${(homeData['class'] as List?)?.length ?? 0}');
-      debugPrint('HomePage: list count = ${(homeData['list'] as List?)?.length ?? 0}');
       setState(() {
         _categories = (homeData['class'] as List?)
             ?.map((e) => Category.fromJson(e as Map<String, dynamic>))
@@ -77,9 +73,7 @@ class _HomePageState extends State<HomePage> {
             .toList() ?? [];
         _isLoading = false;
       });
-      debugPrint('HomePage: loaded ${_videos.length} videos, ${_categories.length} categories');
     } catch (e) {
-      debugPrint('HomePage: _loadData error: $e');
       if (!mounted) return;
       setState(() { _error = e.toString(); _isLoading = false; });
     }
@@ -121,13 +115,117 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _showSourceSwitcher() {
+    final configService = context.read<ConfigService>();
+    final sources = configService.sources;
+    if (sources.isEmpty) return;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Consumer<ConfigService>(
+        builder: (context, configService, child) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4, margin: const EdgeInsets.only(top: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[600],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('切换站点', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              ),
+              const Divider(height: 1),
+              ...sources.map((source) {
+                final isActive = source.key == configService.activeSource?.key;
+                return ListTile(
+                  leading: Icon(
+                    isActive ? Icons.check_circle : Icons.radio_button_off,
+                    color: isActive ? Theme.of(context).primaryColor : Colors.grey,
+                  ),
+                  title: Text(source.name ?? '未命名'),
+                  subtitle: Text(source.api ?? source.spider ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
+                  selected: isActive,
+                  onTap: () {
+                    configService.setActiveSource(source);
+                    Navigator.pop(context);
+                  },
+                );
+              }),
+              const SizedBox(height: 16),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _quickSwitchSource() {
+    final configService = context.read<ConfigService>();
+    final sources = configService.sources;
+    if (sources.length <= 1) return;
+
+    final currentIndex = sources.indexWhere((s) => s.key == configService.activeSource?.key);
+    final nextIndex = (currentIndex + 1) % sources.length;
+    configService.setActiveSource(sources[nextIndex]);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final configService = context.watch<ConfigService>();
+    final activeSource = configService.activeSource;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('牛盒'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: _quickSwitchSource,
+              child: const Text('牛盒', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: _showSourceSwitcher,
+              onLongPress: _loadData,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.5), width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.swap_horiz, size: 14, color: Theme.of(context).primaryColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      activeSource?.name ?? '选择站点',
+                      style: TextStyle(fontSize: 12, color: Theme.of(context).primaryColor),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
         actions: [
-          const SourceSelector(),
+          IconButton(
+            icon: const Icon(Icons.favorite_outline),
+            onPressed: () {
+              Navigator.pushNamed(context, '/favorites');
+            },
+            tooltip: '收藏',
+          ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData, tooltip: '刷新'),
         ],
         bottom: PreferredSize(
@@ -161,7 +259,7 @@ class _HomePageState extends State<HomePage> {
       const SizedBox(height: 16),
       const Text('暂无内容'),
       const SizedBox(height: 8),
-      const Text('请在设置中添加数据源', style: TextStyle(color: Colors.white54)),
+      const Text('请在设置中添加猫源接口', style: TextStyle(color: Colors.white54)),
       const SizedBox(height: 16),
       ElevatedButton(onPressed: _loadData, child: const Text('刷新')),
     ]));

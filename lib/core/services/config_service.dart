@@ -187,6 +187,15 @@ class ConfigService extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateLiveUrl(String url) {
+    if (url.isNotEmpty) {
+      _liveGroups = [
+        LiveGroup(name: '直播', type: 0, url: url),
+      ];
+    }
+    notifyListeners();
+  }
+
   Future<void> saveConfig() async {
     try {
       final config = {

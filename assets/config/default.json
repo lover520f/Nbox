@@ -1,15 +1,5 @@
 {
-  "sites": [
-    {
-      "key": "csp_AppYs",
-      "name": "优视影视",
-      "type": 1,
-      "api": "https://api.appys.tv/api.php/provide/vod/",
-      "searchable": 1,
-      "quicksearch": 1,
-      "filterable": 1
-    }
-  ],
+  "sites": [],
   "lives": [
     {
       "name": "央视直播",

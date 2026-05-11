@@ -62,14 +62,14 @@ class VideoSource extends HiveObject {
       api: json['api'] as String?,
       type: json['type'] as int?,
       spider: json['spider'] as String?,
-      searchable: json['searchable'] as int? ?? 1,
-      changeable: json['changeable'] as int? ?? 1,
-      quicksearch: json['quicksearch'] as int? ?? 1,
-      filter: json['filter'] as int? ?? 1,
-      enabled: json['enabled'] as int? ?? 1,
+      searchable: (json['searchable'] as int?) ?? 1,
+      changeable: (json['changeable'] as int?) ?? 1,
+      quicksearch: (json['quicksearch'] as int?) ?? 1,
+      filter: (json['filter'] as int?) ?? 1,
+      enabled: (json['enabled'] as int?) ?? 1,
       filterable: json['filterable'] as int?,
       ext: json['ext'] as String?,
-    });
+    );
   }
 
   Map<String, dynamic> toJson() => {

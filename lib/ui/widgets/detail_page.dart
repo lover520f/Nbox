@@ -126,7 +126,7 @@ class _DetailPageState extends State<DetailPage> {
             _buildInfoRow('导演', video.vodDirector!),
           if (video.vodActor != null && video.vodActor!.isNotEmpty)
             _buildInfoRow('主演', video.vodActor!),
-          if (video.vodContent != null && video.vodContent!.isNotEmpty) ...[
+          if (video.vodContent != null && video.cleanContent.isNotEmpty) ...[
             const SizedBox(height: 16),
             Text(
               '简介',
@@ -136,7 +136,7 @@ class _DetailPageState extends State<DetailPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              video.vodContent!,
+              video.cleanContent,
               style: Theme.of(context).textTheme.bodyMedium,
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
@@ -163,6 +163,7 @@ class _DetailPageState extends State<DetailPage> {
 
   Widget _buildTags() {
     final tags = <String>[];
+    if (_video?.typeName != null && _video!.typeName!.isNotEmpty) tags.add(_video!.typeName!);
     if (_video?.vodYear != null) tags.add(_video!.vodYear!);
     if (_video?.vodArea != null) tags.add(_video!.vodArea!);
     if (_video?.vodLang != null) tags.add(_video!.vodLang!);

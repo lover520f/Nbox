@@ -32,9 +32,8 @@ void main() async {
 
   if (Platform.isAndroid || Platform.isIOS) {
     SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
       DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
     ]);
   }
 

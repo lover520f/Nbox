@@ -227,6 +227,9 @@ class Video extends HiveObject {
   @HiveField(13)
   String? vodPlayUrl;
 
+  @HiveField(14)
+  String? typeName;
+
   Video({
     this.vodId,
     this.vodName,
@@ -242,6 +245,7 @@ class Video extends HiveObject {
     this.vodContent,
     this.vodPlayFrom,
     this.vodPlayUrl,
+    this.typeName,
   });
 
   factory Video.fromJson(Map<String, dynamic> json) {
@@ -260,6 +264,7 @@ class Video extends HiveObject {
       vodContent: json['vod_content'] as String?,
       vodPlayFrom: json['vod_play_from'] as String?,
       vodPlayUrl: json['vod_play_url'] as String?,
+      typeName: json['type_name'] as String?,
     );
   }
 
@@ -278,6 +283,7 @@ class Video extends HiveObject {
         'vod_content': vodContent,
         'vod_play_from': vodPlayFrom,
         'vod_play_url': vodPlayUrl,
+        'type_name': typeName,
       };
 
   List<String> get playSources {
@@ -294,6 +300,20 @@ class Video extends HiveObject {
       result.add(Episode(source: sources[i], url: urls[i]));
     }
     return result;
+  }
+
+  String get cleanContent {
+    if (vodContent == null || vodContent!.isEmpty) return '';
+    var text = vodContent!;
+    text = text.replaceAll(RegExp(r'<[^>]*>'), '');
+    text = text.replaceAll('&nbsp;', ' ');
+    text = text.replaceAll('&lt;', '<');
+    text = text.replaceAll('&gt;', '>');
+    text = text.replaceAll('&amp;', '&');
+    text = text.replaceAll('&quot;', '"');
+    text = text.replaceAll('&#39;', "'");
+    text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return text;
   }
 
   List<String> getEpisodesBySource(int sourceIndex) {

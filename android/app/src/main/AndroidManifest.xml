@@ -28,7 +28,7 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|locale|fontScale"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize"
-            android:screenOrientation="sensorLandscape">
+            android:screenOrientation="unspecified">
             
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"

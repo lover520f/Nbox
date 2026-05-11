@@ -214,13 +214,14 @@ class VideoAdapter extends TypeAdapter<Video> {
       vodContent: fields[11] as String?,
       vodPlayFrom: fields[12] as String?,
       vodPlayUrl: fields[13] as String?,
+      typeName: fields[14] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Video obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.vodId)
       ..writeByte(1)
@@ -248,7 +249,9 @@ class VideoAdapter extends TypeAdapter<Video> {
       ..writeByte(12)
       ..write(obj.vodPlayFrom)
       ..writeByte(13)
-      ..write(obj.vodPlayUrl);
+      ..write(obj.vodPlayUrl)
+      ..writeByte(14)
+      ..write(obj.typeName);
   }
 
   @override

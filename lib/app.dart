@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'core/services/config_service.dart';
 import 'core/services/storage_service.dart';
@@ -69,9 +70,17 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     final isDesktop = Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+    final size = MediaQuery.of(context).size;
     final isTv = Platform.isAndroid &&
-        MediaQuery.of(context).size.shortestSide >= 600 &&
-        MediaQuery.of(context).orientation == Orientation.landscape;
+        size.shortestSide >= 600 &&
+        size.width > size.height;
+
+    if (isTv) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
 
     if (isDesktop) {
       return _buildDesktopLayout();

@@ -80,6 +80,10 @@ console.warn = console.warn || function() {};
 console.info = console.info || function() {};
 ''';
 
+  bool get _isJsSource => _currentSource?.type == 3;
+
+  bool get _isApiSource => _currentSource?.type == 0 || _currentSource?.type == 1;
+
   Future<void> loadSource(VideoSource source) async {
     _currentSource = source;
     _isLoading = true;
@@ -88,20 +92,21 @@ console.info = console.info || function() {};
     notifyListeners();
 
     try {
-      await _disposeWebView();
-
-      String? spiderUrl = source.spider;
-      if (spiderUrl != null && spiderUrl.isNotEmpty) {
-        if (spiderUrl.endsWith('.md5')) {
-          spiderUrl = spiderUrl.substring(0, spiderUrl.length - 4);
+      if (_isJsSource) {
+        await _disposeWebView();
+        String? spiderUrl = source.spider;
+        if (spiderUrl != null && spiderUrl.isNotEmpty) {
+          if (spiderUrl.endsWith('.md5')) {
+            spiderUrl = spiderUrl.substring(0, spiderUrl.length - 4);
+          }
+          await _loadJsSpider(spiderUrl, source);
+        } else if (source.api != null && source.api!.isNotEmpty) {
+          String apiUrl = source.api!;
+          if (apiUrl.endsWith('.md5')) {
+            apiUrl = apiUrl.substring(0, apiUrl.length - 4);
+          }
+          await _loadJsSpider(apiUrl, source);
         }
-        await _loadJsSpider(spiderUrl, source);
-      } else if (source.api != null && source.api!.isNotEmpty) {
-        String apiUrl = source.api!;
-        if (apiUrl.endsWith('.md5')) {
-          apiUrl = apiUrl.substring(0, apiUrl.length - 4);
-        }
-        await _loadJsSpider(apiUrl, source);
       }
       _isLoading = false;
     } catch (e) {
@@ -115,6 +120,28 @@ console.info = console.info || function() {};
   Future<void> refresh() async {
     if (_currentSource == null) return;
     await loadSource(_currentSource!);
+  }
+
+  String _buildApiUrl(String base, Map<String, String> params) {
+    final uri = Uri.parse(base);
+    final newParams = Map<String, String>.from(uri.queryParameters);
+    newParams.addAll(params);
+    return uri.replace(queryParameters: newParams).toString();
+  }
+
+  Future<Map<String, dynamic>> _fetchJson(String url) async {
+    try {
+      final response = await _dio.get(url,
+          options: Options(
+              responseType: ResponseType.plain,
+              receiveTimeout: const Duration(seconds: 15)));
+      final content = response.data.toString().trim();
+      if (content.isEmpty) return {};
+      return jsonDecode(content) as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('SpiderService: _fetchJson error: $e');
+      return {};
+    }
   }
 
   Future<void> _loadJsSpider(String url, VideoSource source) async {
@@ -261,6 +288,7 @@ if (typeof __jsEvalReturn === 'function') {
   Future<Map<String, dynamic>> homeContent() async {
     if (_currentSource == null) return {'class': [], 'list': []};
     try {
+      if (_isApiSource) return await _apiHome();
       return await _jsSpiderHome();
     } catch (e) {
       debugPrint('homeContent error: $e');
@@ -274,6 +302,7 @@ if (typeof __jsEvalReturn === 'function') {
       return {'page': 1, 'pagecount': 1, 'list': [], 'count': 0};
     }
     try {
+      if (_isApiSource) return await _apiCategory(tid, page);
       return await _jsSpiderCategory(tid, page, extend);
     } catch (e) {
       debugPrint('categoryContent error: $e');
@@ -284,6 +313,7 @@ if (typeof __jsEvalReturn === 'function') {
   Future<Map<String, dynamic>> detailContent(List<String> ids) async {
     if (_currentSource == null || ids.isEmpty) return {'list': []};
     try {
+      if (_isApiSource) return await _apiDetail(ids);
       return await _jsSpiderDetail(ids);
     } catch (e) {
       debugPrint('detailContent error: $e');
@@ -295,6 +325,7 @@ if (typeof __jsEvalReturn === 'function') {
       {required String key, int page = 1}) async {
     if (_currentSource == null) return {'list': [], 'page': page};
     try {
+      if (_isApiSource) return await _apiSearch(key, page);
       return await _jsSpiderSearch(key, page);
     } catch (e) {
       debugPrint('searchContent error: $e');
@@ -306,11 +337,51 @@ if (typeof __jsEvalReturn === 'function') {
       {required String flag, required String id}) async {
     if (_currentSource == null) return {'parse': 0, 'url': '', 'header': {}};
     try {
+      if (_isApiSource) return await _apiPlay(flag, id);
       return await _jsSpiderPlay(flag, id);
     } catch (e) {
       debugPrint('playerContent error: $e');
       return {'parse': 0, 'url': '', 'header': {}};
     }
+  }
+
+  Future<Map<String, dynamic>> _apiHome() async {
+    final api = _currentSource!.api ?? '';
+    if (api.isEmpty) return {'class': [], 'list': []};
+    var data = await _fetchJson(_buildApiUrl(api, {'ac': 'home'}));
+    if (data.isEmpty || (!data.containsKey('class') && !data.containsKey('list'))) {
+      data = await _fetchJson(_buildApiUrl(api, {'ac': 'list'}));
+    }
+    return data;
+  }
+
+  Future<Map<String, dynamic>> _apiCategory(String tid, int page) async {
+    final api = _currentSource!.api ?? '';
+    if (api.isEmpty) return {'page': page, 'pagecount': 1, 'list': [], 'count': 0};
+    return await _fetchJson(_buildApiUrl(api, {'ac': 'list', 't': tid, 'pg': '$page'}));
+  }
+
+  Future<Map<String, dynamic>> _apiDetail(List<String> ids) async {
+    final api = _currentSource!.api ?? '';
+    if (api.isEmpty) return {'list': []};
+    return await _fetchJson(_buildApiUrl(api, {'ac': 'detail', 'ids': ids.join(',')}));
+  }
+
+  Future<Map<String, dynamic>> _apiSearch(String key, int page) async {
+    final api = _currentSource!.api ?? '';
+    if (api.isEmpty) return {'list': [], 'page': page};
+    return await _fetchJson(_buildApiUrl(api, {'wd': key, 'pg': '$page'}));
+  }
+
+  Future<Map<String, dynamic>> _apiPlay(String flag, String id) async {
+    final api = _currentSource!.api ?? '';
+    if (api.isEmpty) return {'parse': 0, 'url': '', 'header': {}};
+    final data = await _fetchJson(_buildApiUrl(api, {'ac': 'detail', 'ids': id}));
+    final list = data['list'] as List?;
+    if (list == null || list.isEmpty) return {'parse': 0, 'url': '', 'header': {}};
+    final vod = list.first as Map<String, dynamic>;
+    final vodPlayUrl = vod['vod_play_url'] as String? ?? '';
+    return {'parse': 0, 'url': vodPlayUrl, 'header': {}};
   }
 
   Future<Map<String, dynamic>> _jsSpiderHome() async {

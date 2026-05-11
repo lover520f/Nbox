@@ -1,10 +1,4 @@
 {
   "sites": [],
-  "lives": [
-    {
-      "name": "央视直播",
-      "type": 0,
-      "url": "https://raw.githubusercontent.com/YueChan/Live/main/IPTV.m3u"
-    }
-  ]
+  "lives": []
 }

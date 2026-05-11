@@ -256,35 +256,41 @@ class SettingPage extends StatelessWidget {
     final nameController = TextEditingController();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('配置网址'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(hintText: '接口名称', labelText: '名称', prefixIcon: Icon(Icons.label)),
+              autofocus: true,
+              decoration: const InputDecoration(hintText: '请输入接口名称', labelText: '接口名称 *', prefixIcon: Icon(Icons.label)),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: urlController,
-              decoration: const InputDecoration(hintText: 'https://example.com/config.json', labelText: '配置网址', prefixIcon: Icon(Icons.link)),
+              decoration: const InputDecoration(hintText: 'https://example.com/config.json', labelText: '配置网址 *', prefixIcon: Icon(Icons.link)),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
           ElevatedButton(
             onPressed: () async {
-              if (urlController.text.isNotEmpty) {
-                final name = nameController.text.isEmpty ? '接口${DateTime.now().millisecondsSinceEpoch % 10000}' : nameController.text;
-                final iface = ConfigInterface(name: name, url: urlController.text, type: 'url');
-                final configService = context.read<ConfigService>();
-                await configService.addInterface(iface);
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已添加接口: $name')));
-                }
+              if (nameController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请输入接口名称')));
+                return;
+              }
+              if (urlController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请输入配置网址')));
+                return;
+              }
+              final iface = ConfigInterface(name: nameController.text, url: urlController.text, type: 'url');
+              final configService = context.read<ConfigService>();
+              await configService.addInterface(iface);
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已添加接口: ${nameController.text}')));
               }
             },
             child: const Text('添加'),
@@ -299,35 +305,41 @@ class SettingPage extends StatelessWidget {
     final nameController = TextEditingController();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('本地包'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(hintText: '接口名称', labelText: '名称', prefixIcon: Icon(Icons.label)),
+              autofocus: true,
+              decoration: const InputDecoration(hintText: '请输入接口名称', labelText: '接口名称 *', prefixIcon: Icon(Icons.label)),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: pathController,
-              decoration: const InputDecoration(hintText: '/sdcard/config.json', labelText: '本地文件路径', prefixIcon: Icon(Icons.folder_open)),
+              decoration: const InputDecoration(hintText: '/sdcard/config.json', labelText: '本地文件路径 *', prefixIcon: Icon(Icons.folder_open)),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
           ElevatedButton(
             onPressed: () async {
-              if (pathController.text.isNotEmpty) {
-                final name = nameController.text.isEmpty ? '本地接口' : nameController.text;
-                final iface = ConfigInterface(name: name, url: pathController.text, type: 'local');
-                final configService = context.read<ConfigService>();
-                await configService.addInterface(iface);
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已添加接口: $name')));
-                }
+              if (nameController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请输入接口名称')));
+                return;
+              }
+              if (pathController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请输入文件路径')));
+                return;
+              }
+              final iface = ConfigInterface(name: nameController.text, url: pathController.text, type: 'local');
+              final configService = context.read<ConfigService>();
+              await configService.addInterface(iface);
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已添加接口: ${nameController.text}')));
               }
             },
             child: const Text('添加'),

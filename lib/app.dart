@@ -60,10 +60,21 @@ class _MainPageState extends State<MainPage> {
   Future<void> _loadInitialData() async {
     final configService = context.read<ConfigService>();
     final savedUrl = StorageService.getString('config_url');
+    bool loaded = false;
     if (savedUrl != null && savedUrl.isNotEmpty) {
-      await configService.loadConfig(savedUrl);
-    } else {
-      await configService.loadConfigFromFile('assets/config/default.json');
+      try {
+        await configService.loadConfig(savedUrl);
+        loaded = configService.activeSource != null;
+      } catch (e) {
+        debugPrint('MainPage: loadConfig from URL failed: $e');
+      }
+    }
+    if (!loaded) {
+      try {
+        await configService.loadConfigFromFile('assets/config/default.json');
+      } catch (e) {
+        debugPrint('MainPage: loadConfigFromFile failed: $e');
+      }
     }
   }
 

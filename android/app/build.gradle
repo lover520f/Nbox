@@ -24,7 +24,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.nbox.app"
-    compileSdk 35
+    compileSdk 36
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -79,6 +79,6 @@ flutter {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0"
     implementation 'androidx.multidex:multidex:2.0.1'
 }

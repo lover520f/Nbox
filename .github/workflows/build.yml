@@ -11,72 +11,69 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
           channel: 'stable'
-      
+          cache: true
+
       - name: Install dependencies
         run: flutter pub get
-      
+
       - name: Build Android APK
-        run: flutter build apk --release -o releases/nbox-${{ github.ref_name }}-v${{ github.run_number }}.apk
-      
-      - name: Upload Android APK
-        uses: actions/upload-release-asset@v1
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
         with:
-          file_path: releases/nbox-${{ github.ref_name }}-v${{ github.run_number }}.apk
-          asset_name: nbox-${{ github.ref_name }}-v${{ github.run_number }}.apk
-          asset_content_type: application/vnd.android.package-archive
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: nbox-apk
+          path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 5
 
   build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
           channel: 'stable'
-      
+          cache: true
+
       - name: Install dependencies
         run: flutter pub get
-      
+
       - name: Build Windows
-        run: flutter build windows --release -o releases/nbox-windows-${{ github.ref_name }}
-      
-      - name: Rename exe
-        shell: bash
-        run: mv releases/nbox-windows-${{ github.ref_name }}/runner/nbox.exe releases/nbox-windows-${{ github.ref_name }}/nbox-${{ github.ref_name }}.exe 2>/dev/null || true
-      
-      - name: Upload Windows EXE
-        uses: actions/upload-release-asset@v1
+        run: flutter build windows --release
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: releases/nbox-windows-${{ github.ref_name }}/nbox-${{ github.ref_name }}.exe
-          asset_name: nbox-windows-${{ github.ref_name }}.exe
-          asset_content_type: application/x-msdownload
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+          name: nbox-windows
+          path: build/windows/x64/runner/Release/
+          retention-days: 5
 
   create-release:
     needs: [build-android, build-windows]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    if: always() && needs.build-android.result == 'success'
     steps:
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Nbox ${{ github.ref }}
+          name: nbox-apk
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Nbox ${{ github.ref_name }}
           draft: false
           prerelease: false
+          files: artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

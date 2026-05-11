@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -9,7 +7,6 @@ class ProxyService extends ChangeNotifier {
   bool _isRunning = false;
   int _port = 7890;
   String? _currentProxyUrl;
-  Map<String, String> _requestHeaders = {};
   List<ProxyLog> _logs = [];
 
   bool get isRunning => _isRunning;
@@ -63,7 +60,6 @@ class ProxyService extends ChangeNotifier {
         url,
         data: body,
         options: options,
-        queryParameters: {'proxyUrl': _currentProxyUrl},
       );
 
       _addLog(ProxyLog(
@@ -125,66 +121,4 @@ class ProxyLog {
   });
 
   bool get isSuccess => statusCode != null && statusCode! >= 200 && statusCode! < 300;
-}
-
-enum ProxyScheme { http, https, socks4, socks5 }
-
-class ProxyConfig {
-  final ProxyScheme scheme;
-  final String host;
-  final int port;
-  final String? username;
-  final String? password;
-
-  ProxyConfig({
-    required this.scheme,
-    required this.host,
-    required this.port,
-    this.username,
-    this.password,
-  });
-
-  factory ProxyConfig.fromUrl(String url) {
-    final uri = Uri.parse(url);
-    return ProxyConfig(
-      scheme: _schemeFromString(uri.scheme),
-      host: uri.host,
-      port: uri.port,
-      username: uri.userInfo.isNotEmpty ? uri.userInfo.split(':').first : null,
-      password: uri.userInfo.contains(':') ? uri.userInfo.split(':').last : null,
-    );
-  }
-
-  static ProxyScheme _schemeFromString(String scheme) {
-    switch (scheme.toLowerCase()) {
-      case 'https':
-        return ProxyScheme.https;
-      case 'socks4':
-        return ProxyScheme.socks4;
-      case 'socks5':
-        return ProxyScheme.socks5;
-      default:
-        return ProxyScheme.http;
-    }
-  }
-
-  String toUrl() {
-    if (username != null && password != null) {
-      return '$scheme://$username:$password@$host:$port';
-    }
-    return '$scheme://$host:$port';
-  }
-
-  String get scheme {
-    switch (this.scheme) {
-      case ProxyScheme.http:
-        return 'http';
-      case ProxyScheme.https:
-        return 'https';
-      case ProxyScheme.socks4:
-        return 'socks4';
-      case ProxyScheme.socks5:
-        return 'socks5';
-    }
-  }
 }

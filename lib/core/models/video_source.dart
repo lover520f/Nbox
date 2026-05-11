@@ -292,8 +292,9 @@ class Video extends HiveObject {
   List<String> getEpisodesBySource(int sourceIndex) {
     final eps = episodes;
     if (sourceIndex >= eps.length) return [];
-    return eps[sourceIndex]
-        .url
+    final episodeUrl = eps[sourceIndex].url;
+    if (episodeUrl == null) return [];
+    return episodeUrl
         .split('#')
         .map((e) {
           final parts = e.split('\$');

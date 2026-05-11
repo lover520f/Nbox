@@ -3,7 +3,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../core/models/video_source.dart';
 import '../../core/services/spider_service.dart';
-import '../../core/services/player_service.dart';
 import 'player_page.dart';
 
 class DetailPage extends StatefulWidget {

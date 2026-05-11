@@ -3,8 +3,6 @@ name: Build Artifacts
 on:
   push:
     branches: [main]
-  schedule:
-    - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -16,7 +14,6 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
           channel: 'stable'
           cache: true
 
@@ -24,29 +21,14 @@ jobs:
         run: flutter pub get
 
       - name: Build Android APK
-        run: |
-          set +e
-          flutter build apk --release --split-per-abi 2>&1 | tee build.log
-          exit_code=${PIPESTATUS[0]}
-          echo "Build exit code: $exit_code"
-          if [ $exit_code -ne 0 ]; then
-            echo "=== Build failed, showing last 100 lines of log ==="
-            tail -100 build.log
-          fi
-          exit $exit_code
-
-      - name: Show output
-        if: always()
-        run: |
-          ls -la build/app/outputs/flutter-apk/ 2>/dev/null || echo "No APK output directory"
-          cat build.log 2>/dev/null | tail -50 || echo "No log file"
+        run: flutter build apk --release
 
       - name: Upload artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: nbox-apks
-          path: build/app/outputs/flutter-apk/
+          name: nbox-apk
+          path: build/app/outputs/flutter-apk/*.apk
           retention-days: 5
 
   release-android:
@@ -59,31 +41,14 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: nbox-apks
+          name: nbox-apk
           path: artifacts
-
-      - name: Prepare Release
-        run: |
-          cd artifacts
-          ls -la
-          for f in *.apk; do
-            newname=""
-            case "$f" in
-              *arm64*|*v8a*) newname="nbox-1.0.0-$f" ;;
-              *armeabi*) newname="nbox-1.0.0-$f" ;;
-              *x86_64*) newname="nbox-1.0.0-$f" ;;
-            esac
-            if [ -n "$newname" ] && [ -f "$f" ]; then
-              mv "$f" "$newname"
-            fi
-          done
-          ls -la
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.0
-          name: Nbox v1.0.0 Release
+          tag_name: v1.0.6
+          name: Nbox v1.0.6 Release
           draft: false
           prerelease: false
           files: artifacts/*
@@ -98,7 +63,6 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
           channel: 'stable'
           cache: true
 
@@ -106,26 +70,12 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows
-        run: |
-          $ErrorActionPreference = "Continue"
-          flutter build windows --release 2>&1 | Tee-Object -File build.log
-          $exit_code = $LASTEXITCODE
-          Write-Host "Build exit code: $exit_code"
-          if ($exit_code -ne 0) {
-            Write-Host "=== Build failed ==="
-            Get-Content build.log | Select-Object -Last 100
-          }
-          exit $exit_code
-
-      - name: Show output
-        if: always()
-        run: |
-          ls build\windows\runner\Release 2>$null || echo "No output directory"
+        run: flutter build windows --release
 
       - name: Upload artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nbox-windows
-          path: build/windows/runner/Release
+          path: build/windows/x64/runner/Release/
           retention-days: 5

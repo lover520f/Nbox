@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:nbox/core/services/config_service.dart';
-import 'package:nbox/core/services/spider_service.dart';
-import 'package:nbox/core/services/player_service.dart';
-import 'package:nbox/core/services/proxy_service.dart';
 import 'package:nbox/ui/pages/home_page.dart';
 import 'package:nbox/ui/pages/setting_page.dart';
 import 'package:nbox/ui/theme/app_theme.dart';

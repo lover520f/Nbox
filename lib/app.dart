@@ -59,17 +59,8 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _loadInitialData() async {
     final configService = context.read<ConfigService>();
-    final savedUrl = StorageService.getString('config_url');
-    bool loaded = false;
-    if (savedUrl != null && savedUrl.isNotEmpty) {
-      try {
-        await configService.loadConfig(savedUrl);
-        loaded = configService.activeSource != null;
-      } catch (e) {
-        debugPrint('MainPage: loadConfig from URL failed: $e');
-      }
-    }
-    if (!loaded) {
+    await configService.init();
+    if (configService.sources.isEmpty) {
       try {
         await configService.loadConfigFromFile('assets/config/default.json');
       } catch (e) {

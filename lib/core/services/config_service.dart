@@ -3,15 +3,29 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/video_source.dart';
+
+class ConfigInterface {
+  final String name;
+  final String url;
+  final String type;
+
+  ConfigInterface({required this.name, required this.url, this.type = 'url'});
+
+  Map<String, dynamic> toJson() => {'name': name, 'url': url, 'type': type};
+
+  factory ConfigInterface.fromJson(Map<String, dynamic> json) =>
+      ConfigInterface(name: json['name'] as String? ?? '', url: json['url'] as String? ?? '', type: json['type'] as String? ?? 'url');
+}
 
 class ConfigService extends ChangeNotifier {
   final Dio _dio = Dio();
   List<VideoSource> _sources = [];
   VideoSource? _activeSource;
   List<LiveGroup> _liveGroups = [];
-  String? _configUrl;
+  List<ConfigInterface> _interfaces = [];
   String? _wallpaper;
   bool _isLoading = false;
   String? _error;
@@ -19,18 +33,77 @@ class ConfigService extends ChangeNotifier {
   List<VideoSource> get sources => _sources;
   VideoSource? get activeSource => _activeSource;
   List<LiveGroup> get liveGroups => _liveGroups;
-  String? get configUrl => _configUrl;
-  String? get wallpaper => _wallpaper;
+  List<ConfigInterface> get interfaces => _interfaces;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> loadConfig(String url) async {
+  Future<void> init() async {
+    _loadInterfaces();
+    for (final iface in _interfaces) {
+      if (iface.type == 'url') {
+        try {
+          await loadConfig(iface.url, silent: true);
+        } catch (e) {
+          debugPrint('ConfigService: failed to load ${iface.name}: $e');
+        }
+      }
+    }
+  }
+
+  void _loadInterfaces() {
+    try {
+      final box = _getConfigBox();
+      final data = box.get('interfaces');
+      if (data != null) {
+        final list = jsonDecode(data as String) as List;
+        _interfaces = list.map((e) => ConfigInterface.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      debugPrint('ConfigService: _loadInterfaces error: $e');
+    }
+  }
+
+  Future<void> _saveInterfaces() async {
+    try {
+      final box = _getConfigBox();
+      await box.put('interfaces', jsonEncode(_interfaces.map((e) => e.toJson()).toList()));
+    } catch (e) {
+      debugPrint('ConfigService: _saveInterfaces error: $e');
+    }
+  }
+
+  dynamic _getConfigBox() {
+    try {
+      return Hive.box('config');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> addInterface(ConfigInterface iface) async {
+    _interfaces.add(iface);
+    await _saveInterfaces();
+    notifyListeners();
+    if (iface.type == 'url') {
+      await loadConfig(iface.url);
+    } else if (iface.type == 'local') {
+      await loadConfigFromFile(iface.url);
+    }
+  }
+
+  Future<void> removeInterface(int index) async {
+    if (index < 0 || index >= _interfaces.length) return;
+    _interfaces.removeAt(index);
+    await _saveInterfaces();
+    notifyListeners();
+  }
+
+  Future<void> loadConfig(String url, {bool silent = false}) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    if (!silent) notifyListeners();
 
     try {
-      _configUrl = url;
       final response = await _dio.get(url,
           options: Options(
               responseType: ResponseType.plain,
@@ -59,10 +132,10 @@ class ConfigService extends ChangeNotifier {
     }
   }
 
-  Future<void> loadConfigFromFile(String path) async {
+  Future<void> loadConfigFromFile(String path, {bool silent = false}) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    if (!silent) notifyListeners();
 
     try {
       String content;
@@ -110,7 +183,7 @@ class ConfigService extends ChangeNotifier {
     }
 
     if (config['sites'] is List) {
-      _sources = (config['sites'] as List).map((e) {
+      final newSources = (config['sites'] as List).map((e) {
         final map = e as Map<String, dynamic>;
         String? spiderUrl = map['spider']?.toString() ?? map['jar']?.toString();
         if (spiderUrl == null || spiderUrl.isEmpty) {
@@ -135,10 +208,12 @@ class ConfigService extends ChangeNotifier {
           ext: ext,
         );
       }).toList();
-    } else if (config['spider'] is List) {
-      _sources = (config['spider'] as List)
-          .map((e) => VideoSource.fromJson(e as Map<String, dynamic>))
-          .toList();
+
+      for (final source in newSources) {
+        if (!_sources.any((s) => s.key == source.key)) {
+          _sources.add(source);
+        }
+      }
     }
 
     _liveGroups = [];
@@ -162,9 +237,6 @@ class ConfigService extends ChangeNotifier {
     }
 
     debugPrint('ConfigService: parsed ${_sources.length} sources, ${_liveGroups.length} live groups');
-    for (final s in _sources) {
-      debugPrint('ConfigService: source ${s.name} type=${s.type} api=${s.api} spider=${s.spider}');
-    }
   }
 
   void setActiveSource(VideoSource source) {

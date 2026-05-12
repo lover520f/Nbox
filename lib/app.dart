@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'core/services/config_service.dart';
-import 'core/services/storage_service.dart';
 import 'ui/pages/home_page.dart';
 import 'ui/pages/live_page.dart';
 import 'ui/pages/favorite_page.dart';
 import 'ui/pages/setting_page.dart';
+import 'ui/pages/plugin_page.dart';
 import 'ui/theme/app_theme.dart';
 
 class NboxApp extends StatelessWidget {
@@ -42,12 +42,14 @@ class _MainPageState extends State<MainPage> {
   final List<Widget> _pages = const [
     HomePage(),
     LivePage(),
+    PluginPage(),
     SettingPage(),
   ];
 
   static const List<_NavItem> _navItems = [
     _NavItem(icon: Icons.home_outlined, selectedIcon: Icons.home, label: '首页'),
     _NavItem(icon: Icons.live_tv_outlined, selectedIcon: Icons.live_tv, label: '直播'),
+    _NavItem(icon: Icons.extension_outlined, selectedIcon: Icons.extension, label: '插件'),
     _NavItem(icon: Icons.settings_outlined, selectedIcon: Icons.settings, label: '设置'),
   ];
 
@@ -66,10 +68,6 @@ class _MainPageState extends State<MainPage> {
       } catch (e) {
         debugPrint('MainPage: loadConfigFromFile failed: $e');
       }
-    }
-    final liveUrl = StorageService.getString('live_url');
-    if (liveUrl != null && liveUrl.isNotEmpty) {
-      configService.updateLiveUrl(liveUrl);
     }
   }
 

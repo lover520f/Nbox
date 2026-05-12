@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/video_source.dart';
+import 'storage_service.dart';
 
 class ConfigInterface {
   final String name;
@@ -39,6 +40,7 @@ class ConfigService extends ChangeNotifier {
 
   Future<void> init() async {
     _loadInterfaces();
+    _loadLiveGroups();
     for (final iface in _interfaces) {
       if (iface.type == 'url') {
         try {
@@ -63,12 +65,32 @@ class ConfigService extends ChangeNotifier {
     }
   }
 
+  void _loadLiveGroups() {
+    try {
+      final data = StorageService.getString('live_groups');
+      if (data != null && data.isNotEmpty) {
+        final list = jsonDecode(data) as List;
+        _liveGroups = list.map((e) => LiveGroup.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      debugPrint('ConfigService: _loadLiveGroups error: $e');
+    }
+  }
+
   Future<void> _saveInterfaces() async {
     try {
       final box = _getConfigBox();
       await box.put('interfaces', jsonEncode(_interfaces.map((e) => e.toJson()).toList()));
     } catch (e) {
       debugPrint('ConfigService: _saveInterfaces error: $e');
+    }
+  }
+
+  Future<void> _saveLiveGroups() async {
+    try {
+      await StorageService.saveString('live_groups', jsonEncode(_liveGroups.map((e) => e.toJson()).toList()));
+    } catch (e) {
+      debugPrint('ConfigService: _saveLiveGroups error: $e');
     }
   }
 
@@ -216,16 +238,29 @@ class ConfigService extends ChangeNotifier {
       }
     }
 
-    _liveGroups = [];
     if (config['lives'] is List) {
-      for (var live in (config['lives'] as List)) {
-        if (live is Map<String, dynamic>) {
-          _liveGroups.add(LiveGroup(
+      final configLives = (config['lives'] as List)
+          .whereType<Map<String, dynamic>>()
+          .map((live) => LiveGroup(
             name: live['name']?.toString() ?? '直播',
             type: live['type'] as int? ?? 0,
             url: live['url']?.toString(),
             epg: live['epg']?.toString(),
-          ));
+          ))
+          .where((lg) => lg.url != null && lg.url!.isNotEmpty)
+          .toList();
+
+      for (final newGroup in configLives) {
+        if (!_liveGroups.any((g) => g.url == newGroup.url)) {
+          _liveGroups.add(newGroup);
+        }
+      }
+
+      if (configLives.isNotEmpty) {
+        _saveLiveGroups();
+        final firstUrl = configLives.first.url;
+        if (firstUrl != null) {
+          StorageService.saveString('live_url', firstUrl);
         }
       }
     }
@@ -260,11 +295,19 @@ class ConfigService extends ChangeNotifier {
   }
 
   void updateLiveUrl(String url) {
-    if (url.isNotEmpty) {
-      _liveGroups = [
-        LiveGroup(name: '直播', type: 0, url: url),
-      ];
+    if (url.isEmpty) return;
+    if (!_liveGroups.any((g) => g.url == url)) {
+      _liveGroups.add(LiveGroup(name: '自定义直播', type: 0, url: url));
     }
+    StorageService.saveString('live_url', url);
+    _saveLiveGroups();
+    notifyListeners();
+  }
+
+  void removeLiveGroup(int index) {
+    if (index < 0 || index >= _liveGroups.length) return;
+    _liveGroups.removeAt(index);
+    _saveLiveGroups();
     notifyListeners();
   }
 
@@ -298,4 +341,11 @@ class LiveGroup {
         'url': url,
         'epg': epg,
       };
+
+  factory LiveGroup.fromJson(Map<String, dynamic> json) => LiveGroup(
+    name: json['name'] as String? ?? '直播',
+    type: json['type'] as int? ?? 0,
+    url: json['url'] as String?,
+    epg: json['epg'] as String?,
+  );
 }

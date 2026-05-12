@@ -102,12 +102,19 @@ class SettingPage extends StatelessWidget {
         return Column(
           children: [
             if (configService.liveGroups.isNotEmpty)
-              ...configService.liveGroups.map((group) => ListTile(
-                leading: const Icon(Icons.live_tv, size: 20),
-                title: Text(group.name),
-                subtitle: Text(group.url ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
-                trailing: const Icon(Icons.check_circle, size: 16, color: Colors.green),
-              ))
+              ...configService.liveGroups.asMap().entries.map((entry) {
+                final index = entry.key;
+                final group = entry.value;
+                return ListTile(
+                  leading: const Icon(Icons.live_tv, size: 20),
+                  title: Text(group.name),
+                  subtitle: Text(group.url ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.close, size: 16, color: Colors.white38),
+                    onPressed: () => configService.removeLiveGroup(index),
+                  ),
+                );
+              })
             else
               const ListTile(
                 leading: Icon(Icons.live_tv),
@@ -118,7 +125,7 @@ class SettingPage extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.add_link),
               title: const Text('设置直播地址'),
-              subtitle: const Text('M3U/TXT直播源地址'),
+              subtitle: const Text('支持M3U/TXT/JSON格式直播源'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showLiveUrlDialog(context),
             ),
@@ -200,7 +207,7 @@ class SettingPage extends StatelessWidget {
   Widget _buildAbout(BuildContext context) {
     return const Column(
       children: [
-        ListTile(leading: Icon(Icons.info_outline), title: Text('版本'), subtitle: Text('3.0.0')),
+        ListTile(leading: Icon(Icons.info_outline), title: Text('版本'), subtitle: Text('3.1.0')),
         ListTile(leading: Icon(Icons.code), title: Text('牛盒'), subtitle: Text('基于 CatVod 架构的全平台影视播放器')),
       ],
     );
@@ -443,14 +450,17 @@ class SettingPage extends StatelessWidget {
           children: [
             TextField(controller: controller, decoration: const InputDecoration(hintText: 'https://example.com/iptv.m3u', labelText: '直播源地址', prefixIcon: Icon(Icons.live_tv))),
             const SizedBox(height: 8),
-            const Text('支持M3U/TXT格式直播源', style: TextStyle(color: Colors.white54, fontSize: 12)),
+            const Text('支持M3U/TXT/JSON格式直播源', style: TextStyle(color: Colors.white54, fontSize: 12)),
           ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
           ElevatedButton(
             onPressed: () async {
-              await StorageService.saveString('live_url', controller.text);
+              if (controller.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请输入直播源地址')));
+                return;
+              }
               if (context.mounted) {
                 context.read<ConfigService>().updateLiveUrl(controller.text);
                 Navigator.pop(context);

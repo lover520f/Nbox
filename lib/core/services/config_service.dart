@@ -113,6 +113,22 @@ class ConfigService extends ChangeNotifier {
     }
   }
 
+  Future<void> addJsInterface({required String name, required String url}) async {
+    final source = VideoSource(
+      key: 'csp_${DateTime.now().millisecondsSinceEpoch}',
+      name: name,
+      api: url,
+      type: 3,
+      spider: url,
+    );
+    _sources.add(source);
+    _activeSource = source;
+    final iface = ConfigInterface(name: name, url: url, type: 'js');
+    _interfaces.add(iface);
+    await _saveInterfaces();
+    notifyListeners();
+  }
+
   Future<void> removeInterface(int index) async {
     if (index < 0 || index >= _interfaces.length) return;
     _interfaces.removeAt(index);
@@ -294,10 +310,10 @@ class ConfigService extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateLiveUrl(String url) {
+  void updateLiveUrl(String url, {String? name}) {
     if (url.isEmpty) return;
     if (!_liveGroups.any((g) => g.url == url)) {
-      _liveGroups.add(LiveGroup(name: '自定义直播', type: 0, url: url));
+      _liveGroups.add(LiveGroup(name: name ?? '自定义直播', type: 0, url: url));
     }
     StorageService.saveString('live_url', url);
     _saveLiveGroups();
